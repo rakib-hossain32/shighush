@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { ArrowUpRight, LockKeyhole } from "lucide-react";
+export function FinalCtaSection(){return <section className="bg-[#10221e] text-background"><div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-8 px-5 py-16 lg:flex-row lg:items-end lg:px-8"><div><span className="inline-flex items-center gap-2 text-sm font-bold text-secondary"><LockKeyhole className="size-4"/>আপনার পরিচয় গোপন রাখুন</span><h2 className="display mt-5 text-4xl font-bold leading-tight sm:text-5xl">আপনার অভিজ্ঞতা<br/>নথিভুক্ত করুন।</h2><p className="mt-5 max-w-xl leading-7 text-[#d8ebe5]">ঘটনাটি ছোট হলেও তা লেখা জরুরি হতে পারে। নিরাপদে লিখুন, ট্র্যাকিং কোড রেখে দিন, আর প্রমাণ থাকলে সংযুক্ত করুন।</p></div><Link href="/report/new" className="inline-flex items-center gap-3 bg-primary px-6 py-4 font-bold text-primary-foreground shadow-[4px_4px_0_#a9d86e]">অভিযোগ লিখুন <ArrowUpRight className="size-5"/></Link></div></section>;
+}

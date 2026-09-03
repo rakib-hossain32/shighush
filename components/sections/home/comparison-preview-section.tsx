@@ -1,0 +1,12 @@
+import Link from "next/link";
+import { ArrowUpRight, BarChart3, Banknote, MapPinned } from "lucide-react";
+
+const unions = [
+  ["শিবচর পৌরসভা", "৮", "ঘুষ / অতিরিক্ত অর্থ"],
+  ["কাঁঠালবাড়ী", "৫", "সেবা-বঞ্চনা"],
+  ["পাঁচচর", "৪", "তথ্য না দেওয়া"],
+] as const;
+
+export function ComparisonPreviewSection() {
+  return <section className="border-y border-border bg-background py-20"><div className="mx-auto grid max-w-7xl gap-10 px-5 lg:grid-cols-[.82fr_1.18fr] lg:px-8"><div><div className="flex items-center gap-2 text-primary"><BarChart3 className="size-5"/><p className="mono text-[11px] font-bold tracking-[.16em]">তুলনামূলক বিশ্লেষণ</p></div><h2 className="display mt-4 text-4xl font-bold leading-tight">কোথায় কী ধরনের<br/>রিপোর্ট বেশি?</h2><p className="mt-5 max-w-md leading-7 text-muted-foreground">ইউনিয়ন, রিপোর্টের ধরন, প্রমাণের হার এবং রিপোর্টে উল্লিখিত টাকার অঙ্ক—সব এক জায়গায় তুলনা করুন।</p><div className="mt-7 flex flex-wrap gap-4 text-sm"><span className="inline-flex items-center gap-2 font-bold"><MapPinned className="size-4 text-primary"/>৬টি এলাকা</span><span className="inline-flex items-center gap-2 font-bold"><Banknote className="size-4 text-primary"/>৳ ৭২,৫০০ উল্লিখিত</span></div><Link href="/statistics" className="mt-8 inline-flex items-center gap-2 bg-primary px-5 py-3 font-bold text-primary-foreground shadow-[4px_4px_0_#10221e]">সম্পূর্ণ তুলনা দেখুন <ArrowUpRight className="size-4"/></Link></div><div className="border-2 border-foreground bg-card p-5 sm:p-7"><div className="flex items-center justify-between border-b border-border pb-4"><div><p className="font-bold">এলাকা অনুযায়ী রিপোর্ট</p><p className="mt-1 text-xs text-muted-foreground">গত ৩০ দিনের নমুনা চিত্র</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">Demo data</span></div><div className="mt-5 grid gap-5">{unions.map(([name,count,factor]) => <div key={name}><div className="flex items-end justify-between gap-3"><div><p className="font-bold">{name}</p><p className="mt-1 text-xs text-muted-foreground">প্রধান বিষয়: {factor}</p></div><span className="text-lg font-bold text-primary">{count}</span></div><div className="mt-2 h-2 bg-muted"><div className="h-full bg-primary" style={{width:`${Number(count)*12.5}%`}}/></div></div>)}</div><p className="mt-6 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">এগুলো অপরাধের চূড়ান্ত পরিমাপ নয়; প্রকাশিত নাগরিক প্রতিবেদনের সমষ্টি।</p></div></div></section>;
+}

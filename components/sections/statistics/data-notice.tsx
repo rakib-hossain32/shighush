@@ -1,0 +1,2 @@
+import { Info } from "lucide-react";
+export function DataNotice(){return <section className="flex gap-3 border-l-4 border-primary bg-muted p-5 text-sm leading-6"><Info className="mt-0.5 size-5 shrink-0 text-primary"/><div><p className="font-bold">ডেমো ডেটা</p><p className="mt-1 text-muted-foreground">উপরের সংখ্যা কেবল UI প্রদর্শনের নমুনা। API যুক্ত হওয়ার পরে `published` রিপোর্ট, তার `verificationLevel`, `incidentDate`, `location.union`, এবং `money.amount` থেকে সব সমষ্টি server-side-এ হিসাব হবে।</p></div></section>}

@@ -1,0 +1,7 @@
+import Link from "next/link";
+import { ArrowUpRight, MapPinned } from "lucide-react";
+
+const places = ["শিবচর পৌরসভা", "কাঁঠালবাড়ী", "পাঁচচর", "বাঁশকান্দি", "কুতুবপুর", "মাদবরেরচর"];
+export function LocationSection() {
+  return <section className="bg-background py-20"><div className="mx-auto grid max-w-7xl gap-8 px-5 lg:grid-cols-[1fr_1.1fr] lg:px-8"><div><p className="mono text-[11px] font-bold tracking-[.16em] text-primary">এলাকাভিত্তিক পর্যবেক্ষণ</p><h2 className="display mt-3 text-4xl font-bold">সমস্যার অবস্থান<br/>বোঝা সহজ করুন</h2><p className="mt-5 max-w-md leading-7 text-muted-foreground">ইউনিয়ন, পৌরসভা ও প্রতিষ্ঠানভিত্তিক রিপোর্টের প্রবণতা দেখা যাবে। অভিযোগকারীর নির্দিষ্ট অবস্থান কখনো দেখানো হবে না।</p><Link href="/map" className="mt-7 inline-flex items-center gap-2 font-bold underline">মানচিত্রে দেখুন <ArrowUpRight className="size-4"/></Link></div><div className="paper-grid relative min-h-70 overflow-hidden border-2 border-foreground p-6"><div className="absolute inset-x-[17%] top-[20%] h-44 rotate-[-12deg] rounded-[50%] border border-dashed border-foreground/40"/><div className="relative flex h-full flex-wrap content-center justify-center gap-3">{places.map((place,index)=><div className="flex items-center gap-2 border border-foreground bg-background px-3 py-2 text-sm font-bold shadow-[2px_2px_0_#10221e]" key={place} style={{transform:`translateY(${index%2===0?8:-8}px)`}}><MapPinned className="size-4 text-primary"/>{place}</div>)}</div></div></div></section>;
+}
