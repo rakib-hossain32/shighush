@@ -122,10 +122,17 @@ export const getCurrentUser = cache(async (): Promise<StaffUser | null> => {
 
   try {
     const response = await getUsers({ limit: 100 });
-    const found = response.data.find((user) => user.id === session.userId);
-    if (found) return found;
+    // Check if response has data array
+    if (response.data && Array.isArray(response.data)) {
+      const found = response.data.find((user) => user.id === session.userId);
+      if (found) return found;
+    }
   } catch (error) {
-    console.error("Failed to fetch users:", error);
+    // Silently fail if user doesn't have permission to fetch users
+    // This can happen for Moderators who can't access user list
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Failed to fetch users (possibly insufficient permissions):', error);
+    }
   }
 
   // A valid token for a user we cannot load: show the role we can prove from the token

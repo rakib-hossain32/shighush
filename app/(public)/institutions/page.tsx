@@ -32,14 +32,14 @@ export default async function InstitutionsPage({ searchParams }: InstitutionsPag
     area: filters.area,
   });
 
-  const institutions = response.data;
-  const meta = response.meta;
+  const institutions = response?.data ?? [];
+  const meta = response?.meta ?? { total: 0, page: 1, limit: 12, totalPages: 0 };
 
   // Platform-wide evidence rate, from the same source as every other figure.
   const statsResponse = await getStatistics("year");
-  const stats = statsResponse.data;
+  const stats = statsResponse?.data;
   const evidenceRate =
-    stats.totals.reports === 0
+    !stats || stats.totals.reports === 0
       ? 0
       : stats.totals.evidenceAttachedReports / stats.totals.reports;
 

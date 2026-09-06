@@ -62,7 +62,10 @@ export function DataTable<T>({
   empty: { title: string; description?: string; action?: ReactNode };
   className?: string;
 }) {
-  if (rows.length === 0) {
+  // Safety: ensure rows is always an array
+  const safeRows = Array.isArray(rows) ? rows : [];
+  
+  if (safeRows.length === 0) {
     return (
       <div className="border border-dashed border-border bg-muted/40 p-10 text-center">
         <p className="font-bold">{empty.title}</p>
@@ -99,7 +102,7 @@ export function DataTable<T>({
         </TableHeader>
 
         <TableBody>
-          {rows.map((row) => {
+          {safeRows.map((row) => {
             const href = rowHref?.(row);
 
             return (

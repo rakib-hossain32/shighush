@@ -25,7 +25,16 @@ export default async function AdminOverviewPage() {
   
   const statsResponse = await getDashboardStats();
   const rawMetrics = statsResponse.data.metrics;
-  const piiAlertsCount = statsResponse.data.piiAlerts.length;
+  
+  // Safely handle piiAlerts - ensure it's an array
+  const piiAlertsData = statsResponse.data.piiAlerts;
+  const piiAlertsArray = Array.isArray(piiAlertsData) ? piiAlertsData : [];
+  const piiAlertsCount = piiAlertsArray.length;
+
+  // Debug: Log first item structure if available
+  if (piiAlertsArray.length > 0 && process.env.NODE_ENV === 'development') {
+    console.log('[DEBUG] First PII Alert:', JSON.stringify(piiAlertsArray[0], null, 2));
+  }
 
   // Transform DashboardMetric[] to OverviewMetric[]
   const metrics: OverviewMetric[] = rawMetrics.map((metric) => ({
@@ -45,10 +54,16 @@ export default async function AdminOverviewPage() {
     limit: 5,
     status: ["submitted", "under_review"],
   });
-  const awaitingReview = queueResponse.data;
+  // Safely handle queue response - ensure data is an array
+  const awaitingReview = Array.isArray(queueResponse.data) ? queueResponse.data : [];
+
+  // Debug: Log first item structure if available
+  if (awaitingReview.length > 0 && process.env.NODE_ENV === 'development') {
+    console.log('[DEBUG] First Queue Item:', JSON.stringify(awaitingReview[0], null, 2));
+  }
 
   // Use PII alerts from dashboard stats (already contains reports with PII findings)
-  const piiAlerts = statsResponse.data.piiAlerts.slice(0, 10);
+  const piiAlerts = piiAlertsArray.slice(0, 10);
 
   const mayReview = can(session.role, "report:review");
 
@@ -57,33 +72,46 @@ export default async function AdminOverviewPage() {
       key: "case",
       header: "নথি",
       primary: true,
-      cell: (report) => (
-        <CellStack
-          subtitle={`${report.institution.nameBn} · ${areaName(report.location.area)}`}
-          title={report.title || formatCaseId(report.publicId)}
-        />
-      ),
+      cell: (report) => {
+        const institutionName = report.institution?.nameBn || report.institutionName || 'অজানা প্রতিষ্ঠান';
+        const area = report.location?.area || '';
+        const subtitle = area ? `${institutionName} · ${areaName(area)}` : institutionName;
+        
+        return (
+          <CellStack
+            subtitle={subtitle}
+            title={report.title || formatCaseId(report.publicId)}
+          />
+        );
+      },
     },
     {
       key: "category",
       header: "ধরন",
       hideBelow: "md",
-      cell: (report) => (
-        <MetaBadge meta={REPORT_CATEGORY_META[report.category]} short size="sm" />
-      ),
+      cell: (report) => {
+        const categoryMeta = REPORT_CATEGORY_META[report.category];
+        return categoryMeta ? (
+          <MetaBadge meta={categoryMeta} short size="sm" />
+        ) : (
+          <span className="text-xs text-muted-foreground">{report.category}</span>
+        );
+      },
     },
     {
       key: "pii",
       header: "গোপনীয়তা",
       hideBelow: "lg",
-      cell: (report) =>
-        report.piiFindings.length > 0 ? (
+      cell: (report) => {
+        const piiCount = report.piiFindings?.length || 0;
+        return piiCount > 0 ? (
           <StatusBadge icon={<AlertTriangleIcon />} size="sm" tone="danger">
-            {report.piiFindings.length}টি সতর্কতা
+            {piiCount}টি সতর্কতা
           </StatusBadge>
         ) : (
           <span className="text-xs text-muted-foreground">পরিষ্কার</span>
-        ),
+        );
+      },
     },
     {
       key: "age",
@@ -100,7 +128,14 @@ export default async function AdminOverviewPage() {
       key: "status",
       header: "অবস্থা",
       align: "end",
-      cell: (report) => <MetaBadge meta={REPORT_STATUS_META[report.status]} short size="sm" />,
+      cell: (report) => {
+        const statusMeta = REPORT_STATUS_META[report.status];
+        return statusMeta ? (
+          <MetaBadge meta={statusMeta} short size="sm" />
+        ) : (
+          <span className="text-xs text-muted-foreground">{report.status}</span>
+        );
+      },
     },
   ];
 

@@ -44,20 +44,23 @@ export default async function AdminReportsPage({ searchParams }: QueuePageProps)
     sort: filters.sort,
   });
 
-  const reports = response.data;
-  const meta = response.meta;
+  const reports = Array.isArray(response.data) ? response.data : [];
+  const meta = response.meta || { page: 1, limit: 20, total: 0, totalPages: 0 };
 
   const columns: Array<Column<ModerationReport>> = [
     {
       key: "case",
       header: "নথি",
       primary: true,
-      cell: (report) => (
-        <CellStack
-          subtitle={`${formatCaseId(report.publicId)} · ${report.institution.nameBn}`}
-          title={report.title || "শিরোনাম এখনো লেখা হয়নি"}
-        />
-      ),
+      cell: (report) => {
+        const institutionName = report.institution?.nameBn || report.institutionName || 'অজানা প্রতিষ্ঠান';
+        return (
+          <CellStack
+            subtitle={`${formatCaseId(report.publicId)} · ${institutionName}`}
+            title={report.title || "শিরোনাম এখনো লেখা হয়নি"}
+          />
+        );
+      },
     },
     {
       key: "area",
@@ -65,7 +68,7 @@ export default async function AdminReportsPage({ searchParams }: QueuePageProps)
       hideBelow: "lg",
       cell: (report) => (
         <span className="text-sm text-muted-foreground">
-          {areaName(report.location.area)}
+          {areaName(report.location?.area || '')}
         </span>
       ),
     },
@@ -73,22 +76,30 @@ export default async function AdminReportsPage({ searchParams }: QueuePageProps)
       key: "category",
       header: "ধরন",
       hideBelow: "md",
-      cell: (report) => (
-        <MetaBadge meta={REPORT_CATEGORY_META[report.category]} short size="sm" />
-      ),
+      cell: (report) => {
+        const categoryMeta = REPORT_CATEGORY_META[report.category];
+        return categoryMeta ? (
+          <MetaBadge meta={categoryMeta} short size="sm" />
+        ) : (
+          <span className="text-xs text-muted-foreground">{report.category}</span>
+        );
+      },
     },
     {
       key: "pii",
       header: "গোপনীয়তা",
       hideBelow: "lg",
-      cell: (report) =>
-        report.piiFindings.length > 0 ? (
+      cell: (report) => {
+        const piiCount = report.piiFindings?.length || 0;
+        const piiList = report.piiFindings || [];
+        return piiCount > 0 ? (
           <StatusBadge icon={<AlertTriangleIcon />} size="sm" tone="danger">
-            {report.piiFindings.join(", ")}
+            {piiList.join(", ")}
           </StatusBadge>
         ) : (
           <span className="text-xs text-muted-foreground">পরিষ্কার</span>
-        ),
+        );
+      },
     },
     {
       key: "assigned",
@@ -116,7 +127,14 @@ export default async function AdminReportsPage({ searchParams }: QueuePageProps)
       key: "status",
       header: "অবস্থা",
       align: "end",
-      cell: (report) => <MetaBadge meta={REPORT_STATUS_META[report.status]} short size="sm" />,
+      cell: (report) => {
+        const statusMeta = REPORT_STATUS_META[report.status];
+        return statusMeta ? (
+          <MetaBadge meta={statusMeta} short size="sm" />
+        ) : (
+          <span className="text-xs text-muted-foreground">{report.status}</span>
+        );
+      },
     },
   ];
 

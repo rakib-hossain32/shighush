@@ -171,6 +171,8 @@ export type PublicReport = {
   status: ReportStatus;
   verificationLevel: VerificationLevel;
   institution: InstitutionRef;
+  /** Fallback field when institution is not populated */
+  institutionName?: string;
   location: ApiLocation;
   incidentDate?: IncidentDate;
   money?: ReportedMoney;

@@ -32,7 +32,7 @@ export default async function AdminUsersPage() {
 
   const mayWrite = can(access.session.role, "user:write");
   const response = await getUsers({ page: 1, limit: 50 });
-  const users = response.data;
+  const users = Array.isArray(response.data) ? response.data : [];
 
   const columns: Array<Column<StaffUser>> = [
     {

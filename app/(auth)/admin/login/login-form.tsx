@@ -59,7 +59,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
               aria-describedby={state.fieldErrors?.email ? "email-error" : undefined}
               aria-invalid={Boolean(state.fieldErrors?.email)}
               autoComplete="email"
-              className="h-11 border border-border bg-background py-2 pl-10 pr-3 font-medium outline-none transition-all duration-200 hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/20"
+              className="h-11 border border-border bg-background py-2 pl-10 pr-3 font-medium outline-none transition-all duration-200 hover:border-primary/50 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
               defaultValue={state.values?.email || ""}
               id="email"
               key={state.values?.email}
@@ -88,7 +88,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
               }
               aria-invalid={Boolean(state.fieldErrors?.password)}
               autoComplete="current-password"
-              className="h-11 border border-border bg-background py-2 pl-10 pr-12 font-medium outline-none transition-all duration-200 hover:border-primary/50 focus:border-primary focus:ring-4 focus:ring-primary/20"
+              className="h-11 border border-border bg-background py-2 pl-10 pr-12 font-medium outline-none transition-all duration-200 hover:border-primary/50 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
               id="password"
               name="password"
               placeholder="••••••••"

@@ -21,7 +21,11 @@ export function Pagination({
   basePath: string;
   params?: Record<string, string | string[] | undefined>;
 }) {
-  if (meta.totalPages <= 1) return null;
+  // Safety: handle undefined or invalid meta
+  const safeMeta = meta || { page: 1, limit: 20, total: 0, totalPages: 1 };
+  const { page = 1, totalPages = 1, total = 0 } = safeMeta;
+  
+  if (totalPages <= 1) return null;
 
   const href = (page: number) => {
     const query = new URLSearchParams();
@@ -35,8 +39,6 @@ export function Pagination({
     const qs = query.toString();
     return qs ? `${basePath}?${qs}` : basePath;
   };
-
-  const { page, totalPages, total } = meta;
 
   // A compact window around the current page, so 40 pages do not render 40 links.
   const windowStart = Math.max(1, Math.min(page - 1, totalPages - 2));

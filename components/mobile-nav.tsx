@@ -14,12 +14,12 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <div className="md:hidden">
+    <div className="min-[961px]:hidden">
       <Button
         aria-controls="mobile-menu"
         aria-expanded={open}
         aria-label="Toggle menu"
-        className="md:hidden"
+        className="min-[961px]:hidden"
         onClick={() => setOpen(!open)}
         size="icon"
         variant="outline"

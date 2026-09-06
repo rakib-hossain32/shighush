@@ -32,7 +32,7 @@ export function TrackAccessForm() {
               name="caseId"
               autoComplete="off"
               placeholder="যেমন: শি-০০৪২"
-              className="h-11 border border-border bg-background px-3 font-medium outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/15"
+              className="h-11 border border-border bg-background px-3 font-medium outline-none transition-all duration-200 hover:border-primary/50 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
             />
           </Label>
           <Label className="grid gap-2 text-sm font-bold">
@@ -45,7 +45,7 @@ export function TrackAccessForm() {
               type="password"
               autoComplete="current-password"
               placeholder="আপনার গোপন token"
-              className="h-11 border border-border bg-background px-3 font-medium outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/15"
+              className="h-11 border border-border bg-background px-3 font-medium outline-none transition-all duration-200 hover:border-primary/50 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
             />
           </Label>
           <Button type="button" className="mt-2 h-11 w-full sm:w-fit sm:px-6">

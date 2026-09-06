@@ -121,6 +121,15 @@ export function MetaBadge({
   size?: "sm" | "md";
   className?: string;
 }) {
+  // Safety: handle undefined or invalid meta
+  if (!meta || !meta.tone) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        {meta?.label || meta?.short || 'N/A'}
+      </span>
+    );
+  }
+  
   return (
     <StatusBadge tone={meta.tone} icon={icon} size={size} className={className}>
       {short ? meta.short : meta.label}

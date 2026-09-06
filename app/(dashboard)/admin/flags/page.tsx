@@ -30,7 +30,7 @@ export default async function AdminFlagsPage() {
   }
 
   const response = await getFlags({ page: 1, limit: 50 });
-  const flags = response.data;
+  const flags = Array.isArray(response.data) ? response.data : [];
 
   const columns: Array<Column<Flag>> = [
     {

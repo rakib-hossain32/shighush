@@ -27,7 +27,7 @@ export default async function AdminAppealsPage() {
   }
 
   const response = await getAppeals({ page: 1, limit: 50 });
-  const appeals = response.data;
+  const appeals = Array.isArray(response.data) ? response.data : [];
 
   const columns: Array<Column<Appeal>> = [
     {

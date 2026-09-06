@@ -23,7 +23,7 @@ export function ReportListCard({ report }: { report: PublicReport }) {
           <div className="flex flex-wrap gap-2">
             <MetaBadge
               meta={verification}
-              icon={report.evidence.length > 0 ? <BadgeCheck /> : undefined}
+              icon={report.evidence?.length > 0 ? <BadgeCheck /> : undefined}
             />
             <StatusBadge tone="neutral">
               {REPORT_CATEGORY_META[report.category].label}

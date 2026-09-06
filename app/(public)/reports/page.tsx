@@ -34,8 +34,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     sort: filters.sort,
   });
 
-  const reports = response.data;
-  const meta = response.meta;
+  const reports = response?.data ?? [];
+  const meta = response?.meta ?? { total: 0, page: 1, limit: 20, totalPages: 0 };
 
   return (
     <PageFrame

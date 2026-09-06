@@ -51,6 +51,8 @@ export function ReportSubmissionForm() {
   const form = useForm<ReportSubmitInput>({
     resolver: zodResolver(reportSubmitSchema) as any,
     defaultValues: {
+      category: "",
+      area: "",
       incidentDatePrecision: "exact",
       moneyType: "unknown",
       enableAnonymousInbox: false,
@@ -109,7 +111,7 @@ export function ReportSubmissionForm() {
             control={control}
             name="category"
             render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select onValueChange={field.onChange} value={field.value || ""}>
                 <SelectTrigger id="category">
                   <SelectValue placeholder="বেছে নিন" />
                 </SelectTrigger>
@@ -136,7 +138,7 @@ export function ReportSubmissionForm() {
             control={control}
             name="area"
             render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select onValueChange={field.onChange} value={field.value || ""}>
                 <SelectTrigger id="area">
                   <SelectValue placeholder="বেছে নিন" />
                 </SelectTrigger>
@@ -184,7 +186,7 @@ export function ReportSubmissionForm() {
             control={control}
             name="incidentDatePrecision"
             render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value} defaultValue="exact">
+              <Select onValueChange={field.onChange} value={field.value || "exact"} defaultValue="exact">
                 <SelectTrigger className="sm:w-48">
                   <SelectValue />
                 </SelectTrigger>
@@ -296,7 +298,7 @@ export function ReportSubmissionForm() {
                     control={control}
                     name="moneyType"
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value} defaultValue="unknown">
+                      <Select onValueChange={field.onChange} value={field.value || "unknown"} defaultValue="unknown">
                         <SelectTrigger id="moneyType">
                           <SelectValue />
                         </SelectTrigger>

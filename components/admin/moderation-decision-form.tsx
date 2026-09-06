@@ -159,7 +159,7 @@ export function ModerationDecisionForm({
               যাচাইয়ের স্তর
             </Label>
             <select
-              className="h-10 border border-border bg-background px-3 text-sm font-medium outline-none focus:border-primary"
+              className="h-10 border border-border bg-background px-3 text-sm font-medium outline-none transition-all duration-200 hover:border-primary/50 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20"
               defaultValue={report.verificationLevel}
               id="verificationLevel"
               name="verificationLevel"

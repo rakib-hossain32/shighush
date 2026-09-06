@@ -53,6 +53,7 @@ export default function PublicError({
               <Button
                 render={<Link href="/" />}
                 variant="outline"
+                nativeButton={false}
               >
                 <HomeIcon />
                 হোমপেজে ফিরে যান
