@@ -5,32 +5,70 @@
  * Ensures compatibility between backend and frontend data structures
  */
 
-import type { ModerationReport, PublicReport, Institution, Appeal, Flag, StaffUser, AuditLogEntry } from '@/services/_shared/types';
-import type { ReportCategory, ReportStatus, VerificationLevel, UserRole } from '@/lib/domain/enums';
+import type { 
+  ModerationReport, 
+  PublicReport, 
+  Institution, 
+  Appeal, 
+  Flag, 
+  StaffUser, 
+  AuditLogEntry 
+} from '@/services/_shared/types';
+import type { 
+  ReportCategory, 
+  ReportStatus, 
+  VerificationLevel, 
+  UserRole,
+  InstitutionType,
+  InstitutionCategory,
+  OfficeLevel,
+  AppealReason,
+  AppealStatus,
+  FlagReason
+} from '@/lib/domain/enums';
+
+function toIsoString(val: unknown): string {
+  if (!val) return new Date().toISOString();
+  if (val instanceof Date) return val.toISOString();
+  if (typeof val === 'string') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? val : d.toISOString();
+  }
+  return new Date().toISOString();
+}
 
 /**
  * Convert backend report to frontend PublicReport type
  */
 export function adaptPublicReport(apiReport: any): PublicReport {
+  const caseIdNum = typeof apiReport.caseId === 'number' 
+    ? apiReport.caseId 
+    : parseInt(String(apiReport.caseId || '').replace(/\D/g, ''), 10) || 0;
+
   return {
-    id: apiReport._id || apiReport.id,
-    slug: apiReport.caseId,
-    publicId: apiReport.caseId,
-    title: apiReport.narrative?.substring(0, 60) || 'রিপোর্ট',
-    category: apiReport.category as ReportCategory,
+    id: apiReport._id || apiReport.id || '',
+    publicId: caseIdNum,
+    slug: apiReport.slug || apiReport.caseId || '',
+    title: apiReport.title || apiReport.narrative?.substring(0, 60) || 'রিপোর্ট',
+    summary: apiReport.summary || apiReport.narrative?.substring(0, 150) || '',
+    narrative: apiReport.narrative,
+    category: (apiReport.category as ReportCategory) || 'other',
+    status: (apiReport.status as ReportStatus) || 'published',
+    verificationLevel: (apiReport.verificationLevel as VerificationLevel) || 'unverified',
     institution: {
-      id: apiReport.institutionId,
-      nameBn: apiReport.institutionName,
-      slug: apiReport.institutionSlug || '',
+      id: apiReport.institutionId || apiReport.institution?._id || apiReport.institution?.id || '',
+      nameBn: apiReport.institutionName || apiReport.institution?.nameBn || '',
+      slug: apiReport.institutionSlug || apiReport.institution?.slug || '',
     },
     location: {
-      area: apiReport.incidentLocation || apiReport.area || 'unknown',
+      area: apiReport.incidentLocation || apiReport.area || apiReport.location?.area || 'unknown',
     },
-    verificationLevel: apiReport.verificationLevel as VerificationLevel || 'pending',
-    submittedAt: new Date(apiReport.createdAt),
-    publishedAt: apiReport.publishedAt ? new Date(apiReport.publishedAt) : undefined,
-    narrative: apiReport.narrative,
-    incidentDate: new Date(apiReport.incidentDate),
+    incidentDate: typeof apiReport.incidentDate === 'string' 
+      ? { exact: apiReport.incidentDate } 
+      : (apiReport.incidentDate || undefined),
+    evidence: apiReport.evidence || [],
+    publishedAt: toIsoString(apiReport.publishedAt || apiReport.createdAt),
+    updatedAt: toIsoString(apiReport.updatedAt || apiReport.createdAt),
   };
 }
 
@@ -38,24 +76,13 @@ export function adaptPublicReport(apiReport: any): PublicReport {
  * Convert backend report to frontend ModerationReport type
  */
 export function adaptModerationReport(apiReport: any): ModerationReport {
+  const base = adaptPublicReport(apiReport);
   return {
-    id: apiReport._id || apiReport.id,
-    publicId: apiReport.caseId,
-    title: apiReport.narrative?.substring(0, 60) || 'রিপোর্ট',
-    category: apiReport.category as ReportCategory,
-    status: apiReport.status as ReportStatus,
-    institution: {
-      id: apiReport.institutionId,
-      nameBn: apiReport.institutionName,
-      slug: '',
-    },
-    location: {
-      area: apiReport.incidentLocation || apiReport.area || 'unknown',
-    },
-    verificationLevel: apiReport.verificationLevel as VerificationLevel || 'pending',
+    ...base,
+    rawNarrative: apiReport.rawNarrative || apiReport.narrative || '',
     piiFindings: apiReport.piiFindings || [],
-    submittedAt: new Date(apiReport.createdAt),
-    reviewedAt: apiReport.updatedAt ? new Date(apiReport.updatedAt) : undefined,
+    moderatorNotes: apiReport.moderatorNotes || [],
+    submittedAt: toIsoString(apiReport.createdAt),
     assignedTo: apiReport.assignedTo ? {
       id: apiReport.assignedTo._id || apiReport.assignedTo.id,
       name: apiReport.assignedTo.name,
@@ -68,18 +95,21 @@ export function adaptModerationReport(apiReport: any): ModerationReport {
  */
 export function adaptInstitution(apiInstitution: any): Institution {
   return {
-    id: apiInstitution._id || apiInstitution.id,
-    slug: apiInstitution.slug,
-    nameBn: apiInstitution.nameBn,
+    id: apiInstitution._id || apiInstitution.id || '',
+    slug: apiInstitution.slug || '',
+    nameBn: apiInstitution.nameBn || '',
     nameEn: apiInstitution.nameEn,
-    category: apiInstitution.category,
-    type: apiInstitution.type,
-    area: apiInstitution.area,
-    address: apiInstitution.address,
-    description: apiInstitution.description,
-    reportCount: apiInstitution.reportCount || 0,
-    publishedCount: apiInstitution.publishedCount || 0,
-    verifiedCount: apiInstitution.verifiedCount || 0,
+    category: (apiInstitution.category as InstitutionCategory) || 'other',
+    type: (apiInstitution.type as InstitutionType) || 'government',
+    officeLevel: (apiInstitution.officeLevel as OfficeLevel) || 'upazila',
+    location: {
+      area: apiInstitution.area || apiInstitution.location?.area,
+      addressPublic: apiInstitution.address || apiInstitution.location?.addressPublic,
+    },
+    website: apiInstitution.website,
+    status: apiInstitution.status || 'active',
+    metrics: apiInstitution.metrics,
+    serviceArea: apiInstitution.serviceArea || apiInstitution.area || apiInstitution.location?.area || 'upazila_wide',
   };
 }
 
@@ -88,19 +118,14 @@ export function adaptInstitution(apiInstitution: any): Institution {
  */
 export function adaptAppeal(apiAppeal: any): Appeal {
   return {
-    id: apiAppeal._id || apiAppeal.id,
-    reportId: apiAppeal.reportId,
-    caseId: apiAppeal.caseId,
-    reason: apiAppeal.reason,
-    description: apiAppeal.description,
-    status: apiAppeal.status,
-    submittedAt: new Date(apiAppeal.createdAt),
-    resolvedAt: apiAppeal.resolvedAt ? new Date(apiAppeal.resolvedAt) : undefined,
-    resolution: apiAppeal.resolution,
-    resolvedBy: apiAppeal.resolvedBy ? {
-      id: apiAppeal.resolvedBy._id || apiAppeal.resolvedBy.id,
-      name: apiAppeal.resolvedBy.name,
-    } : undefined,
+    id: apiAppeal._id || apiAppeal.id || '',
+    caseId: apiAppeal.caseId || '',
+    reportSlug: apiAppeal.reportSlug,
+    reason: (apiAppeal.reason as AppealReason) || 'other',
+    detail: apiAppeal.description || apiAppeal.detail || '',
+    status: (apiAppeal.status as AppealStatus) || 'received',
+    receivedAt: toIsoString(apiAppeal.createdAt || apiAppeal.receivedAt),
+    resolvedAt: apiAppeal.resolvedAt ? toIsoString(apiAppeal.resolvedAt) : undefined,
   };
 }
 
@@ -109,22 +134,13 @@ export function adaptAppeal(apiAppeal: any): Appeal {
  */
 export function adaptFlag(apiFlag: any): Flag {
   return {
-    id: apiFlag._id || apiFlag.id,
-    reportId: apiFlag.reportId._id || apiFlag.reportId,
-    report: apiFlag.reportId.caseId ? {
-      id: apiFlag.reportId._id,
-      caseId: apiFlag.reportId.caseId,
-      narrative: apiFlag.reportId.narrative?.substring(0, 100),
-    } : undefined,
-    reason: apiFlag.reason,
-    details: apiFlag.details,
-    status: apiFlag.status,
-    submittedAt: new Date(apiFlag.createdAt),
-    reviewedBy: apiFlag.reviewedBy ? {
-      id: apiFlag.reviewedBy._id || apiFlag.reviewedBy.id,
-      name: apiFlag.reviewedBy.name,
-    } : undefined,
-    reviewNotes: apiFlag.reviewNotes,
+    id: apiFlag._id || apiFlag.id || '',
+    reportSlug: apiFlag.reportSlug || apiFlag.reportId?.slug || apiFlag.reportId?.caseId || '',
+    reportTitle: apiFlag.reportTitle || apiFlag.reportId?.title || apiFlag.reportId?.narrative?.substring(0, 60) || '',
+    reason: (apiFlag.reason as FlagReason) || 'misinformation',
+    detail: apiFlag.details || apiFlag.detail,
+    status: (apiFlag.status as 'open' | 'actioned' | 'dismissed') || 'open',
+    raisedAt: toIsoString(apiFlag.createdAt || apiFlag.raisedAt),
   };
 }
 
@@ -133,12 +149,12 @@ export function adaptFlag(apiFlag: any): Flag {
  */
 export function adaptStaffUser(apiUser: any): StaffUser {
   return {
-    id: apiUser._id || apiUser.id,
-    name: apiUser.name,
-    email: apiUser.email,
-    role: apiUser.role as UserRole,
-    createdAt: new Date(apiUser.createdAt),
-    lastActive: apiUser.updatedAt ? new Date(apiUser.updatedAt) : new Date(apiUser.createdAt),
+    id: apiUser._id || apiUser.id || '',
+    name: apiUser.name || '',
+    email: apiUser.email || '',
+    role: (apiUser.role as UserRole) || 'Moderator',
+    createdAt: toIsoString(apiUser.createdAt),
+    lastLoginAt: apiUser.lastLoginAt ? toIsoString(apiUser.lastLoginAt) : undefined,
   };
 }
 
@@ -147,16 +163,19 @@ export function adaptStaffUser(apiUser: any): StaffUser {
  */
 export function adaptAuditLog(apiLog: any): AuditLogEntry {
   return {
-    id: apiLog._id || apiLog.id,
-    timestamp: new Date(apiLog.createdAt),
-    userId: apiLog.userId._id || apiLog.userId.id,
-    userName: apiLog.userId.name,
-    userRole: apiLog.userId.role as UserRole,
-    action: apiLog.action,
-    targetType: apiLog.targetType,
-    targetId: apiLog.targetId,
-    details: apiLog.details,
-    ipAddress: apiLog.ipAddress,
+    id: apiLog._id || apiLog.id || '',
+    actor: {
+      id: apiLog.userId?._id || apiLog.userId?.id || apiLog.actor?.id || '',
+      name: apiLog.userId?.name || apiLog.actor?.name || 'System',
+      role: (apiLog.userId?.role || apiLog.actor?.role || 'Moderator') as UserRole,
+    },
+    action: apiLog.action || '',
+    target: {
+      type: apiLog.targetType || apiLog.target?.type || 'report',
+      id: apiLog.targetId || apiLog.target?.id || '',
+    },
+    summary: apiLog.details || apiLog.summary || '',
+    at: toIsoString(apiLog.createdAt || apiLog.timestamp || apiLog.at),
   };
 }
 

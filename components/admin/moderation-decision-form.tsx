@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   BadgeCheckIcon,
   Loader2Icon,
@@ -82,6 +83,18 @@ export function ModerationDecisionForm({
     {},
   );
   const [decision, setDecision] = useState<string>("publish");
+
+  useEffect(() => {
+    if (state.ok) {
+      toast.success("মডারেশন সিদ্ধান্ত সংরক্ষিত হয়েছে!", {
+        description: "নথিটি সফলভাবে হালনাগাদ করা হয়েছে।",
+      });
+    } else if (state.error) {
+      toast.error("সিদ্ধান্ত সংরক্ষণ করা যায়নি", {
+        description: state.error,
+      });
+    }
+  }, [state]);
 
   const available = DECISIONS.filter((option) => !option.adminOnly || canRemove);
   const active = available.find((option) => option.value === decision) ?? available[0];

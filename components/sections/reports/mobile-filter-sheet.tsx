@@ -56,9 +56,9 @@ export function MobileFilterSheet({ filters }: { filters: ReportFilterInput }) {
           className="fixed inset-0 z-100 lg:hidden"
           role="dialog"
         >
-          <Button
+          <button
             aria-label="ফিল্টার বন্ধ করুন"
-            className="absolute inset-0 bg-foreground/45 backdrop-blur-[1px]"
+            className="absolute inset-0 bg-foreground/45 backdrop-blur-[1px] cursor-pointer"
             onClick={() => setOpen(false)}
             type="button"
           />

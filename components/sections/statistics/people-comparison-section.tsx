@@ -1,6 +1,61 @@
 import Link from "next/link";
-import { Eye, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, Scale, ShieldAlert, Users } from "lucide-react";
 
 export function PeopleComparisonSection() {
-  return <section className="border-2 border-foreground bg-background p-6 sm:p-8"><div className="grid gap-6 lg:grid-cols-[.7fr_1.3fr]"><div><Eye className="size-6 text-primary"/><p className="mono mt-6 text-[11px] font-bold tracking-[.14em] text-primary">ব্যক্তি সংক্রান্ত রিপোর্ট</p><h2 className="display mt-2 text-3xl font-bold">নাম নয়,<br/>দায়বদ্ধতার মানদণ্ড।</h2></div><div><p className="leading-7 text-muted-foreground">কাউকে “সবচেয়ে বেশি ঘুষ নিয়েছে” বলা যাবে না। যথেষ্ট প্রমাণ ও প্রকাশ-নীতির threshold পূরণ হলে, কেবল “রিপোর্টে উল্লিখিত ব্যক্তি” হিসেবে তার সাথে সম্পর্কিত রিপোর্টের সংখ্যা, প্রমাণের স্তর এবং official record দেখানো যাবে।</p><div className="mt-6 flex items-start gap-3 border-l-4 border-secondary bg-muted p-4 text-sm"><ShieldAlert className="mt-0.5 size-5 shrink-0 text-primary"/><p>ব্যক্তির নাম ও তুলনা দেখানোর আগে নাম-প্রকাশ নীতি, আপিলের সুযোগ এবং দুইজন moderator-এর অনুমোদন বাধ্যতামূলক রাখুন।</p></div><Link href="/methodology" className="mt-6 inline-block font-bold underline">নাম প্রকাশ ও comparison policy পড়ুন →</Link></div></div></section>;
+  return (
+    <div className="border-2 border-border bg-card shadow-[4px_4px_0_var(--foreground)]">
+      <div className="border-b-2 border-border p-5 sm:p-6 bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center border-2 border-border bg-background text-primary">
+              <Users className="size-4" />
+            </span>
+            <div>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
+                PERSONNEL & INTEGRITY BENCHMARKS
+              </span>
+              <h3 className="text-xl font-extrabold font-heading text-foreground">
+                ব্যক্তি সংক্রান্ত রিপোর্ট ও দায়িত্বশীলতার মানদণ্ড
+              </h3>
+            </div>
+          </div>
+          <span className="border-2 border-amber-500/40 bg-amber-500/10 px-2.5 py-1  text-xs font-bold text-amber-700 dark:text-amber-400">
+            কঠোর নিরপেক্ষতা নীতি
+          </span>
+        </div>
+      </div>
+
+      <div className="p-5 sm:p-6 space-y-5">
+        <div className="grid gap-6 lg:grid-cols-[1fr_auto]">
+          <div className="space-y-3 max-w-3xl">
+            <p className="text-sm text-foreground font-semibold leading-relaxed">
+              শিঘুষ কোনো ব্যক্তিশত্রুতা বা চরিত্রহননের মাধ্যম নয়। এখানে কাউকে একতরফাভাবে দোষী সাব্যস্ত করা হয় না।
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              পর্যাপ্ত প্রামাণ্য প্রমাণ এবং ডাবল-মডারেশন যাচাই ছাড়া কোনো সরকারি কর্মকর্তার নাম বা পদবি পাবলিক ডেটাবেজে তালিকাভুক্ত করা হয় না। অভিযুক্ত ব্যক্তির আত্মপক্ষ সমর্থন ও দাপ্তরিক প্রতিক্রিয়া উপস্থাপনের পূর্ণ সুযোগ নিশ্চিত করা হয়।
+            </p>
+
+            <div className="border-2 border-border bg-secondary/40 p-3.5 flex items-start gap-2.5 mt-4">
+              <ShieldAlert className="size-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                ব্যক্তির নাম প্রকাশের ক্ষেত্রে দুই স্তরের মানব পর্যালোচক এবং আইনি নির্দেশিকা প্রযোজ্য।
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-center sm:items-end">
+            <Link
+              href="/methodology"
+              className="inline-flex items-center gap-1.5 border-2 border-foreground bg-background px-4 py-2 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none cursor-pointer"
+            >
+              <Scale className="size-3.5 text-primary" />
+              <span>পূর্ণ মেথডোলজি ও আপিল নীতি</span>
+              <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
+

@@ -17,7 +17,27 @@ export function createPageMetadata({ title, description, path, index = true }: P
     description,
     alternates: canonical ? { canonical } : undefined,
     robots: index ? { index: true, follow: true } : { index: false, follow: false, nocache: true },
-    openGraph: { type: "website", locale: "bn_BD", siteName: SITE_NAME, title: `${title} | ${SITE_NAME}`, description, url: canonical },
-    twitter: { card: "summary", title: `${title} | ${SITE_NAME}`, description },
+    openGraph: {
+      type: "website",
+      locale: "bn_BD",
+      siteName: SITE_NAME,
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      url: canonical,
+      images: [
+        {
+          url: "/opengraph-image",
+          width: 1200,
+          height: 630,
+          alt: `${title} | ${SITE_NAME}`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      images: ["/opengraph-image"],
+    },
   };
 }

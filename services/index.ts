@@ -19,6 +19,8 @@ export {
   getReportBySlug,
   getReports,
   submitReport,
+  getReportByCase,
+  type CaseTrackResult,
 } from "@/services/reports/reports.service";
 
 // Statistics
@@ -34,6 +36,7 @@ export {
   getModerationQueue,
   getModerationReport,
   updateReportStatus,
+  assignReport,
   redactReport,
   type DashboardMetric,
   type DashboardStats,

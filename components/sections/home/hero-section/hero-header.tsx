@@ -18,7 +18,7 @@ export function HeroHeader() {
         </span>
         <span className="tracking-wide">শিবচর, মাদারীপুর</span>
         <span className="text-border">|</span>
-        <span className="flex items-center gap-1 font-mono text-primary">
+        <span className="flex items-center gap-1  text-primary">
           <Zap className="size-3 fill-primary text-primary" />
           লাইভ নাগরিক জবাবদিহিতা পোর্টাল
         </span>

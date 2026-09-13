@@ -38,7 +38,11 @@ export function ReportTimeline({ report }: { report: PublicReport }) {
 
       <ol className="mt-6 grid gap-4 md:grid-cols-3">
         {events.map((event) => {
-          const meta = REPORT_STATUS_META[event.status];
+          const meta = REPORT_STATUS_META[event.status] ?? {
+            label: event.status,
+            short: event.status,
+            tone: "neutral" as const,
+          };
           const Icon = STATUS_ICON[event.status] ?? CircleDot;
 
           return (

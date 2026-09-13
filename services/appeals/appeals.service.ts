@@ -8,8 +8,8 @@ import type { ApiListResponse, ApiSuccessResponse, Appeal } from "@/services/_sh
 export type AppealListParams = {
   page?: number;
   limit?: number;
-  status?: string;
-  reason?: string;
+  status?: string | string[];
+  reason?: string | string[];
 };
 
 /**

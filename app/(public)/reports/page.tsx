@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { ArrowRight, FileQuestion, FilterX, Plus, Sparkles } from "lucide-react";
+
 import { PageFrame } from "@/components/page-frame";
 import { Pagination } from "@/components/pagination";
 import { MobileFilterSheet } from "@/components/sections/reports/mobile-filter-sheet";
@@ -6,7 +9,9 @@ import { ReportsFilterPanel } from "@/components/sections/reports/reports-filter
 import { ReportsToolbar } from "@/components/sections/reports/reports-toolbar";
 import { parseFilters, reportFilterSchema } from "@/lib/domain/schemas";
 import { getReports } from "@/services";
+import type { ReportCategory, VerificationLevel } from "@/lib/domain/enums";
 import { createPageMetadata } from "@/lib/seo";
+import { formatBnNumber } from "@/lib/format";
 
 export const metadata = createPageMetadata({
   title: "অভিযোগের রেকর্ড",
@@ -19,6 +24,14 @@ type ReportsPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+const QUICK_FILTERS = [
+  { label: "সব নথি", href: "/reports" },
+  { label: "প্রমাণ সংযুক্ত", href: "/reports?verificationLevel=evidence_attached" },
+  { label: "ঘুষ ও অতিরিক্ত অর্থ", href: "/reports?category=bribery" },
+  { label: "সেবা-বঞ্চনা", href: "/reports?category=service_denial" },
+  { label: "পৌরসভা এলাকা", href: "/reports?area=shibchar_pourashava" },
+];
+
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const raw = await searchParams;
   const filters = parseFilters(reportFilterSchema, raw);
@@ -27,8 +40,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     page: filters.page,
     limit: filters.limit,
     search: filters.search,
-    category: filters.category,
-    verificationLevel: filters.verificationLevel,
+    category: filters.category as ReportCategory | ReportCategory[] | undefined,
+    verificationLevel: filters.verificationLevel as VerificationLevel | VerificationLevel[] | undefined,
     area: filters.area,
     institution: filters.institution,
     sort: filters.sort,
@@ -37,50 +50,123 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const reports = response?.data ?? [];
   const meta = response?.meta ?? { total: 0, page: 1, limit: 20, totalPages: 0 };
 
+  const hasActiveFilters =
+    Boolean(filters.search) ||
+    (filters.category && filters.category.length > 0) ||
+    (filters.verificationLevel && filters.verificationLevel.length > 0) ||
+    (filters.area && filters.area.length > 0);
+
   return (
     <PageFrame
+      badgeText={`${formatBnNumber(meta.total)} নথি প্রকাশিত`}
+      breadcrumbs={[{ label: "অভিযোগের রেকর্ড" }]}
       copy="প্রতিটি নথি একটি নাগরিক-প্রতিবেদন; এটি কোনো অপরাধের চূড়ান্ত প্রমাণ নয়। যাচাইয়ের স্তর, প্রকাশের তারিখ এবং প্রাসঙ্গিক তথ্য আলাদা করে দেখানো হয়।"
-      eyebrow="নথি ভাণ্ডার / প্রকাশিত প্রতিবেদন"
-      title="অভিযোগের রেকর্ড"
+      eyebrow="নথি ভাণ্ডার / নাগরিক রেকর্ড"
+      title="অভিযোগের আর্কাইভ ও রেকর্ড"
+      action={
+        <Link
+          href="/report/new"
+          className="inline-flex items-center gap-1.5 border-2 border-foreground bg-primary px-4 py-2 text-xs font-bold text-foreground shadow-[3px_3px_0_var(--foreground)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none cursor-pointer"
+        >
+          <Plus className="size-3.5" />
+          <span>নতুন অভিযোগ লিখুন</span>
+        </Link>
+      }
+      stats={[
+        { label: "মোট প্রকাশিত নথি", value: meta.total },
+        { label: "বর্তমান পাতা", value: `${meta.page} / ${meta.totalPages || 1}` },
+      ]}
     >
-      {/*
-        One GET form wraps both the toolbar and the filter panel. Submitting either
-        rewrites the query string and this Server Component re-renders — so search,
-        sort and filters compose instead of overwriting one another, with no client state.
-      */}
-      <form
-        action="/reports"
-        className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]"
-        method="GET"
-      >
-        <section className="lg:order-2">
-          <ReportsToolbar count={meta.total} search={filters.search} sort={filters.sort} />
-          <MobileFilterSheet filters={filters} />
+      <div className="space-y-6">
+        {/* Quick Presets Bar (Neo-Brutalist Badges) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <span className="shrink-0 text-xs font-bold text-muted-foreground mr-1 flex items-center gap-1">
+            <Sparkles className="size-3.5 text-primary" />
+            দ্রুত দেখুন:
+          </span>
+          {QUICK_FILTERS.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="shrink-0 border-2 border-border bg-card px-3 py-1  text-xs font-bold text-foreground transition-all hover:border-foreground hover:shadow-[2px_2px_0_var(--foreground)] hover:-translate-y-0.5"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
 
-          {reports.length > 0 ? (
-            <div className="mt-1">
-              {reports.map((report) => (
-                <ReportListCard key={report.id} report={report} />
-              ))}
+        {/* Main Grid: Filters + List */}
+        <form
+          action="/reports"
+          className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] items-start"
+          method="GET"
+        >
+          {/* Desktop Filter Sidebar */}
+          <ReportsFilterPanel
+            className="hidden lg:block lg:sticky lg:top-20"
+            filters={filters}
+          />
+
+          {/* Main Results Column */}
+          <div className="space-y-4">
+            {/* Toolbar: Search + Sort */}
+            <ReportsToolbar count={meta.total} search={filters.search} sort={filters.sort} />
+
+            {/* Mobile Sheet Trigger */}
+            <div className="lg:hidden">
+              <MobileFilterSheet filters={filters} />
             </div>
-          ) : (
-            <div className="mt-8 border border-dashed border-border bg-muted p-8 text-center">
-              <p className="font-bold">এই ফিল্টারে কোনো নথি পাওয়া যায়নি</p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                অন্য ধরন, এলাকা বা যাচাইয়ের স্তর বেছে দেখুন। নতুন নথি রিভিউ শেষে এখানে যোগ
-                হবে।
-              </p>
-            </div>
-          )}
 
-          <Pagination basePath="/reports" meta={meta} params={raw} />
-        </section>
+            {/* Reports List */}
+            {reports.length > 0 ? (
+              <div className="space-y-4">
+                {reports.map((report) => (
+                  <ReportListCard key={report.id} report={report} />
+                ))}
+              </div>
+            ) : (
+              /* Elevated Empty State */
+              <div className="border-2 border-dashed border-border bg-card p-8 sm:p-12 text-center shadow-[3px_3px_0_var(--foreground)]">
+                <div className="mx-auto flex size-14 items-center justify-center border-2 border-border bg-muted text-foreground">
+                  <FileQuestion className="size-7" />
+                </div>
+                <h3 className="mt-4 text-base font-bold text-foreground font-heading">
+                  এই ফিল্টারে কোনো নাগরিক নথি পাওয়া যায়নি
+                </h3>
+                <p className="mt-1.5 text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                  অন্য কোনো এলাকা, সেবার ধরন বা যাচাইয়ের স্তর নির্বাচন করে দেখতে পারেন। অথবা ফিল্টার রিসেট করুন।
+                </p>
 
-        <ReportsFilterPanel
-          className="order-3 hidden lg:order-1 lg:sticky lg:top-20 lg:block"
-          filters={filters}
-        />
-      </form>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                  {hasActiveFilters && (
+                    <Link
+                      href="/reports"
+                      className="inline-flex items-center gap-1.5 border-2 border-border bg-background px-4 py-2 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none cursor-pointer"
+                    >
+                      <FilterX className="size-3.5 mr-1" />
+                      <span>সব ফিল্টার মুছে দিন</span>
+                    </Link>
+                  )}
+                  <Link
+                    href="/report/new"
+                    className="inline-flex items-center gap-1.5 border-2 border-foreground bg-primary px-4 py-2 text-xs font-bold text-foreground shadow-[3px_3px_0_var(--foreground)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none cursor-pointer"
+                  >
+                    <span>নতুন অভিযোগ নথিভুক্ত করুন</span>
+                    <ArrowRight className="size-3.5 ml-1" />
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {meta.totalPages > 1 && (
+              <div className="pt-2">
+                <Pagination basePath="/reports" meta={meta} params={raw} />
+              </div>
+            )}
+          </div>
+        </form>
+      </div>
     </PageFrame>
   );
 }

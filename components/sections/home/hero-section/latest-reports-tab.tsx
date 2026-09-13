@@ -32,7 +32,7 @@ export function LatestReportsTab({
                   }
                 </span>
               </div>
-              <span className="font-mono text-xs font-bold text-muted-foreground">
+              <span className=" text-xs font-bold text-muted-foreground">
                 শি-{String(activeReport.publicId).padStart(4, "০")}
               </span>
             </div>
@@ -83,7 +83,7 @@ export function LatestReportsTab({
           <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
             সর্বশেষ ভেরিফাইড ফিড
           </span>
-          <span className="rounded border border-secondary bg-secondary/20 px-2 py-0.5 font-mono text-[10px] font-bold text-foreground">
+          <span className="rounded border border-secondary bg-secondary/20 px-2 py-0.5  text-[10px] font-bold text-foreground">
             লাইভ সিঙ্ক
           </span>
         </div>
@@ -100,7 +100,7 @@ export function LatestReportsTab({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono font-extrabold">
+                <span className=" font-extrabold">
                   শি-{String(report.publicId).padStart(4, "০")}
                 </span>
                 <span className="text-[10px] text-muted-foreground">

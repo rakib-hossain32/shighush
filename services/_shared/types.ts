@@ -59,7 +59,7 @@ export type {
  * ------------------------------------------------------------------ */
 
 export type ApiQueryValue = string | number | boolean | null | undefined;
-export type ApiQuery = Record<string, ApiQueryValue | ApiQueryValue[]>;
+export type ApiQuery = Record<string, ApiQueryValue | ApiQueryValue[] | readonly ApiQueryValue[]>;
 
 export type PaginationMeta = {
   page: number;
@@ -124,8 +124,8 @@ export type ModerationListParams = {
   page?: number;
   limit?: number;
   search?: string;
-  status?: ReportStatus | ReportStatus[];
-  category?: ReportCategory | ReportCategory[];
+  status?: ReportStatus | ReportStatus[] | readonly ReportStatus[];
+  category?: ReportCategory | ReportCategory[] | readonly ReportCategory[];
   area?: string | string[];
   flaggedOnly?: boolean;
   sort?: ReportSort;
@@ -218,6 +218,7 @@ export type InstitutionMetrics = {
 };
 
 export type Institution = {
+  serviceArea: any;
   id: string;
   nameBn: string;
   nameEn?: string;

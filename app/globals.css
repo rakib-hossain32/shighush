@@ -66,6 +66,14 @@
   --primary: var(--vermillion);
   --primary-foreground: var(--ink);
   --secondary: var(--sand);
+  
+
+
+
+
+
+  
+  
   --secondary-foreground: var(--ink);
   --muted: var(--sand);
   --muted-foreground: color-mix(in srgb, var(--ink) 74%, var(--paper));

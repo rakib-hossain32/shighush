@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Hind_Siliguri, IBM_Plex_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 import { SITE_NAME, SITE_URL } from "@/lib/seo";
 import { IconSprite } from "@/components/ui/icon-sprite";
 
@@ -35,14 +36,23 @@ export const metadata: Metadata = {
   keywords: ["শিবচর", "নাগরিক প্রতিবেদন", "জনসেবা", "জবাবদিহিতা", "বাংলাদেশ"],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   formatDetection: { telephone: false, address: false, email: false },
 };
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="bn" className={`${bangla.variable} ${manrope.variable} ${ibmPlexMono.variable}`}>
-      <body>
+      <body className="overflow-x-hidden">
         <IconSprite />
         <TooltipProvider>{children}</TooltipProvider>
+        <Toaster />
       </body>
     </html>
   );

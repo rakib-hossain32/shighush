@@ -333,6 +333,16 @@ export const FLAG_REASON_META = {
   copyright: { label: "কপিরাইট", short: "কপিরাইট", tone: "neutral" },
 } satisfies Meta<FlagReason>;
 
+export const FLAG_STATUSES = ["open", "reviewed", "actioned", "dismissed"] as const;
+export type FlagStatus = (typeof FLAG_STATUSES)[number];
+
+export const FLAG_STATUS_META = {
+  open: { label: "অপেক্ষমাণ", short: "অপেক্ষমাণ", tone: "warning" },
+  reviewed: { label: "পর্যালোচিত", short: "পর্যালোচিত", tone: "info" },
+  actioned: { label: "ব্যবস্থা গৃহীত", short: "গৃহীত", tone: "success" },
+  dismissed: { label: "খারিজ", short: "খারিজ", tone: "muted" },
+} satisfies Meta<FlagStatus>;
+
 /* ------------------------------------------------------------------ *
  * Staff roles — must match shighush_backend/src/models/user.model.ts
  *

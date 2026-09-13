@@ -4,12 +4,13 @@ import { FinalCtaSection } from "@/components/sections/home/final-cta-section";
 // import { HeroSection } from "@/components/sections/home/hero-section";
 import { InstitutionPreviewSection } from "@/components/sections/home/institution-preview-section";
 import { LocationSection } from "@/components/sections/home/location-section";
+import { FaqSection } from "@/components/sections/home/faq-section";
 import { PlatformIntroSection } from "@/components/sections/home/platform-intro-section";
 import { ProcessSection } from "@/components/sections/home/process-section";
 import { RecentReportsSection } from "@/components/sections/home/recent-reports-section";
 import { VerificationSection } from "@/components/sections/home/verification-section";
 import { createPageMetadata } from "@/lib/seo";
-import { StatisticsSection } from "@/components/sections/home/hero-section/index";
+import { StatisticsSection } from "@/components/sections/home/statistics-section";
 import HeroSection from "@/components/sections/home/hero-section";
 
 export const metadata = createPageMetadata({
@@ -32,6 +33,7 @@ export default async function HomePage() {
       <InstitutionPreviewSection />
       <VerificationSection />
       <LocationSection />
+      <FaqSection />
       <FinalCtaSection />
     </div>
   );

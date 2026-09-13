@@ -66,8 +66,13 @@ export default async function InstitutionDetailPage({
 
   return (
     <PageFrame
+      badgeText={INSTITUTION_CATEGORY_META[institution.category].label}
+      breadcrumbs={[
+        { label: "সেবা প্রতিষ্ঠান", href: "/institutions" },
+        { label: institution.nameBn },
+      ]}
       copy="একটি প্রতিষ্ঠানের প্রকাশিত নাগরিক-রিপোর্ট, যাচাইয়ের অবস্থা ও জবাবদিহিতার রেকর্ড এক জায়গায় দেখুন।"
-      eyebrow={`প্রতিষ্ঠান / ${INSTITUTION_CATEGORY_META[institution.category].label}`}
+      eyebrow={`প্রতিষ্ঠান প্রোফাইল / ${institution.serviceArea}`}
       title={`${institution.nameBn}, ${DISTRICT_BN}`}
     >
       <div className="space-y-6 sm:space-y-8">

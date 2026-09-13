@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { LockKeyhole } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+
 import { PageFrame } from "@/components/page-frame";
+import { ProcessGuide } from "@/components/sections/report-form/process-guide";
 import { ReportSubmissionForm } from "@/components/sections/report-form/report-submission-form";
+import { SafetyRail, SafetyStrip, TrackingCard } from "@/components/sections/report-form/safety-rail";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
@@ -15,32 +18,35 @@ export const metadata = createPageMetadata({
 export default function NewReportPage() {
   return (
     <PageFrame
-      eyebrow="নতুন নথি / নিরাপদ ফর্ম"
-      title="আপনার অভিজ্ঞতা লিখুন"
-      copy="শুধু ঘটনার তথ্য দিন। নিজের বা অন্য কারও ব্যক্তিগত ফোন, NID, বাসার ঠিকানা বা অপ্রয়োজনীয় ব্যক্তিগত তথ্য লিখবেন না।"
+      badgeText="এনক্রিপ্টেড ও পরিচয়-মুক্ত"
+      breadcrumbs={[{ label: "অভিযোগ জমা দিন" }]}
+      copy="পরিচয় সম্পূর্ণ গোপন রেখে ঘটনার বস্তুনিষ্ঠ তথ্য দিন। নিজের বা অন্য কারও ব্যক্তিগত ফোন নম্বর বা NID লিখবেন না।"
+      eyebrow="নিরাপদ অভিযোগ ফরম"
+      title="নাগরিক অভিযোগ জমা দিন"
+      action={
+        <Link
+          className="inline-flex cursor-pointer items-center gap-1.5 border-2 border-foreground bg-primary px-3.5 py-1.5 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+          href="/safety"
+        >
+          <ShieldCheck aria-hidden="true" className="size-3.5" />
+          <span>সুরক্ষা নীতি</span>
+        </Link>
+      }
     >
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        <ReportSubmissionForm />
-        
-        <aside className="h-fit bg-foreground p-6 text-background">
-          <LockKeyhole className="size-7 text-secondary" />
-          <h2 className="display mt-6 text-3xl font-bold">
-            আপনার পরিচয়
-            <br />
-            সুরক্ষিত থাকুক
-          </h2>
-          <ul className="mt-5 grid gap-4 text-sm leading-6 text-muted-foreground">
-            <li>• জমার পরে একটি গোপন ট্র্যাকিং কোড পাবেন।</li>
-            <li>• প্রকাশের আগে মডারেটর ব্যক্তিগত তথ্য বাদ দেবেন।</li>
-            <li>• প্রমাণ থাকলে সেটি যাচাইয়ের স্তর বাড়াতে সাহায্য করে।</li>
-          </ul>
-          <Link
-            href="/safety"
-            className="mt-7 inline-flex border-b border-secondary pb-1 text-sm font-bold text-secondary"
-          >
-            নিরাপত্তার নিয়ম পড়ুন
-          </Link>
-        </aside>
+      <div className="flex flex-col gap-6 sm:gap-8">
+        {/* On desktop (lg+), the full process overview is shown above the columns */}
+        <div className="hidden lg:block">
+          <ProcessGuide />
+        </div>
+
+        <div className="grid items-start gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
+            <ReportSubmissionForm />
+            <TrackingCard className="lg:hidden" />
+          </div>
+
+          <SafetyRail />
+        </div>
       </div>
     </PageFrame>
   );

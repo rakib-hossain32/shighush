@@ -1,513 +1,728 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { toast } from "sonner";
+import Link from "next/link";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  AlertTriangleIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckCircle2Icon,
+  CheckIcon,
+  CopyIcon,
+  FileTextIcon,
   Loader2Icon,
-  PaperclipIcon,
+  LockIcon,
   SendIcon,
-  ShieldAlertIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { submitReportAction } from "@/app/(public)/report/new/actions";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+  reportSubmitSchema,
+  type ReportSubmitInput,
+} from "@/lib/domain/schemas";
+import { type ReportCategory } from "@/lib/domain/enums";
+import { hasBlockingPii } from "@/lib/domain/pii";
+
 import {
-  DATE_PRECISIONS,
-  MONEY_TYPES,
-  REPORT_CATEGORIES,
-  REPORT_CATEGORY_META,
-  MONEY_TYPE_META,
-  DATE_PRECISION_META,
-} from "@/lib/domain/enums";
-import { AREAS } from "@/lib/domain/geo";
-import { reportSubmitSchema, type ReportSubmitInput } from "@/lib/domain/schemas";
-import { detectPii, hasBlockingPii } from "@/lib/domain/pii";
+  ReportFormContext,
+  FORM_STEPS,
+  CATEGORY_SCENARIOS,
+  FIELD_LABELS,
+  STEP_FIELDS,
+} from "./form-context";
+import { StepProgress } from "./step-progress";
+import { StepContext } from "./step-context";
+import { StepNarrative } from "./step-narrative";
+import { StepDetails } from "./step-details";
+import { StepReview } from "./step-review";
 
 /**
- * Complete report submission form with:
- * - Real-time PII detection
- * - Progressive disclosure (money/accused fields optional)
- * - Zod validation via react-hook-form
- * - Honeypot spam protection
- * - File upload UI (backend integration pending)
+ * `scrollIntoView` is a script API — the `scroll-behavior: auto` that `globals.css`
+ * forces under `prefers-reduced-motion` does not govern it, so it has to be checked here.
  */
+function scrollBehavior(): ScrollBehavior {
+  if (typeof window === "undefined") return "auto";
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
 
 export function ReportSubmissionForm() {
-  const [showOptional, setShowOptional] = useState(false);
-  const [showMoney, setShowMoney] = useState(false);
-  const [showAccused, setShowAccused] = useState(false);
-  
+  const [currentStep, setCurrentStep] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [trackingId, setTrackingId] = useState<string>("");
+  const [secretToken, setSecretToken] = useState<string>("");
+  const [copied, setCopied] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  /** Gates the error summary: only worth showing once the reporter has tried to move on. */
+  const [attemptedAdvance, setAttemptedAdvance] = useState(false);
+
+  const formRef = useRef<HTMLFormElement>(null);
+
   const form = useForm<ReportSubmitInput>({
-    resolver: zodResolver(reportSubmitSchema) as any,
+    resolver: zodResolver(reportSubmitSchema) as Resolver<ReportSubmitInput>,
+    mode: "onTouched",
     defaultValues: {
-      category: "",
-      area: "",
+      institutionName: "",
+      officeName: "",
+      category: undefined,
+      area: undefined,
+      incidentDate: "",
       incidentDatePrecision: "exact",
+      narrative: "",
+      moneyAmount: undefined,
       moneyType: "unknown",
+      officialFee: undefined,
+      accusedName: "",
+      accusedDesignation: "",
+      serviceName: "",
+      referenceNumber: "",
       enableAnonymousInbox: false,
-      contactReason: "", // Honeypot
+      truthAcknowledged: undefined,
+      policyAcknowledged: undefined,
+      contactReason: "",
     },
   });
 
   const {
-    register,
-    control,
-    handleSubmit,
     watch,
-    setValue,
-    formState: { errors, isSubmitting },
+    trigger,
+    handleSubmit,
+    reset,
+    getValues,
+    formState: { errors, isDirty, isSubmitting: formSubmitting },
   } = form;
 
+  const selectedCategory = watch("category") as ReportCategory | undefined;
   const narrative = watch("narrative") || "";
-  const piiFindings = detectPii(narrative);
   const hasPii = hasBlockingPii(narrative);
 
+  const scenario = selectedCategory
+    ? CATEGORY_SCENARIOS[selectedCategory]
+    : null;
+  const needsMoney = scenario?.needsMoney ?? false;
+
+  /* ---------------------------------------------------------------- *
+   * Navigation feedback
+   * ---------------------------------------------------------------- */
+
+  const scrollToForm = useCallback(() => {
+    formRef.current?.scrollIntoView({
+      behavior: scrollBehavior(),
+      block: "start",
+    });
+  }, []);
+
+  /**
+   * Move the viewport and the keyboard to the first thing that needs attention.
+   *
+   * Resolves the field by id. Every control is given an id matching its schema key —
+   * including the two `role="radiogroup"` wrappers, which have no single input to point
+   * at. That is deliberate rather than going through RHF's `setFocus`: several controls
+   * here are Base UI popups or `<Controller>`-driven radio groups, none of which reliably
+   * carry a focusable RHF ref.
+   */
+  const focusFirstError = useCallback(
+    (names: string[]) => {
+      const target = names
+        .map((name) => document.getElementById(name))
+        .find((el): el is HTMLElement => el !== null);
+
+      if (!target) {
+        scrollToForm();
+        return;
+      }
+
+      target.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
+
+      const focusable = target.matches("input, textarea, select, button")
+        ? target
+        : target.querySelector<HTMLElement>(
+            "input:not([type='hidden']), textarea, select, button, [tabindex]:not([tabindex='-1'])",
+          );
+      // preventScroll: the scrollIntoView above already placed it, centred.
+      focusable?.focus({ preventScroll: true });
+    },
+    [scrollToForm],
+  );
+
+  /* ---------------------------------------------------------------- *
+   * Step validation
+   * ---------------------------------------------------------------- */
+
+  const validateCurrentStep = useCallback(async (): Promise<boolean> => {
+    if (currentStep === 0) {
+      return trigger([
+        "institutionName",
+        "category",
+        "area",
+        "incidentDate",
+        "incidentDatePrecision",
+        "officeName",
+      ]);
+    }
+    if (currentStep === 1) {
+      const isValid = await trigger(["narrative"]);
+      if (hasPii) {
+        return false;
+      }
+      return isValid;
+    }
+    if (currentStep === 2) {
+      const values = getValues();
+      const fieldsToValidate: (keyof ReportSubmitInput)[] = [];
+      let hasManualErrors = false;
+
+      // Financial scenarios: moneyAmount is REQUIRED
+      if (needsMoney) {
+        if (!values.moneyAmount && values.moneyAmount !== 0) {
+          form.setError("moneyAmount", {
+            type: "manual",
+            message: "এই ধরনের অভিযোগে ঘুষ/চাঁদার পরিমাণ অবশ্যই দিতে হবে",
+          });
+          hasManualErrors = true;
+        } else {
+          fieldsToValidate.push("moneyAmount");
+        }
+        if (!values.moneyType || values.moneyType === "unknown") {
+          form.setError("moneyType", {
+            type: "manual",
+            message: "টাকা চাওয়া হয়েছে না দেওয়া হয়েছে, তা বেছে নিন",
+          });
+          hasManualErrors = true;
+        } else {
+          fieldsToValidate.push("moneyType");
+        }
+      } else {
+        // Non-financial: only validate if user actually entered something
+        if (values.moneyAmount !== undefined && values.moneyAmount !== null) {
+          fieldsToValidate.push("moneyAmount", "moneyType");
+        }
+      }
+
+      if (values.officialFee !== undefined && values.officialFee !== null) {
+        fieldsToValidate.push("officialFee");
+      }
+      if (values.accusedName || values.accusedDesignation) {
+        fieldsToValidate.push("accusedName", "accusedDesignation");
+      }
+      if (values.serviceName) {
+        fieldsToValidate.push("serviceName");
+      }
+      if (values.referenceNumber) {
+        fieldsToValidate.push("referenceNumber");
+      }
+
+      if (hasManualErrors) return false;
+      if (fieldsToValidate.length > 0) {
+        return trigger(fieldsToValidate);
+      }
+      return true;
+    }
+    return true;
+  }, [currentStep, trigger, getValues, hasPii, needsMoney, form]);
+
+  /** Errors on the current step, in the order the step presents them. */
+  const stepErrors = useMemo(() => {
+    return (STEP_FIELDS[currentStep] ?? [])
+      .filter((name) => Boolean(errors[name]))
+      .map((name) => ({
+        name: name as string,
+        label: FIELD_LABELS[name] ?? (name as string),
+        message: String(errors[name]?.message ?? ""),
+      }));
+  }, [currentStep, errors]);
+
+  /** Step 2 can also be blocked by PII, which is not a field-level error. */
+  const blockedByPii = currentStep === 1 && hasPii;
+  const showErrorSummary =
+    attemptedAdvance && (stepErrors.length > 0 || blockedByPii);
+
+  const goNext = useCallback(async () => {
+    setAttemptedAdvance(true);
+    const isValid = await validateCurrentStep();
+
+    if (!isValid) {
+      // Read errors after validation has settled them.
+      const failing = (STEP_FIELDS[currentStep] ?? [])
+        .filter((name) => Boolean(form.formState.errors[name]))
+        .map(String);
+      focusFirstError(failing.length > 0 ? failing : ["narrative"]);
+      return;
+    }
+
+    if (currentStep < FORM_STEPS.length - 1) {
+      setCurrentStep((s) => s + 1);
+      setAttemptedAdvance(false);
+      scrollToForm();
+    }
+  }, [currentStep, validateCurrentStep, focusFirstError, scrollToForm, form]);
+
+  const goBack = useCallback(() => {
+    if (currentStep > 0) {
+      setCurrentStep((s) => s - 1);
+      setAttemptedAdvance(false);
+      scrollToForm();
+    }
+  }, [currentStep, scrollToForm]);
+
+  const goToStep = useCallback(
+    async (stepIndex: number) => {
+      if (stepIndex === currentStep) return;
+
+      if (stepIndex < currentStep) {
+        setCurrentStep(stepIndex);
+        setAttemptedAdvance(false);
+        scrollToForm();
+        return;
+      }
+      // Forward jumps are only allowed one step at a time, and only if valid.
+      if (stepIndex === currentStep + 1) {
+        await goNext();
+      }
+    },
+    [currentStep, goNext, scrollToForm],
+  );
+
+  /* ---------------------------------------------------------------- *
+   * Unsaved-work guard
+   *
+   * Warns before the tab closes, and deliberately stores NOTHING. This is an anonymous
+   * whistleblowing form: a narrative naming a public official must not be left sitting in
+   * localStorage on a phone that may be shared, borrowed, or seized.
+   * ---------------------------------------------------------------- */
+
+  useEffect(() => {
+    if (isSuccess || !isDirty) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty, isSuccess]);
+
+  /* ---------------------------------------------------------------- *
+   * Submit
+   * ---------------------------------------------------------------- */
+
   const onSubmit = async (data: ReportSubmitInput) => {
-    // This will be replaced with actual server action in Phase 2
-    console.log("Submitting report:", data);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    alert("Mock submission - connect to API in Phase 2");
+    if (hasPii) return;
+
+    setServerError(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await submitReportAction(data);
+      if (result.success && result.caseId) {
+        toast.success("অভিযোগ সফলভাবে জমা হয়েছে!", {
+          description: `ট্র্যাকিং কোড: ${result.caseId} — নিরাপদে সংরক্ষণ করুন।`,
+          duration: 8000,
+        });
+        setTrackingId(result.caseId);
+        if (result.secretToken) {
+          setSecretToken(result.secretToken);
+        }
+        setIsSuccess(true);
+      } else {
+        const errMsg =
+          result.error || "অভিযোগ জমা দেওয়া যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।";
+        setServerError(errMsg);
+        toast.error("অভিযোগ জমা ব্যর্থ হয়েছে", { description: errMsg });
+      }
+    } catch {
+      const errMsg = "সার্ভারের সাথে সংযোগ স্থাপন করা যায়নি। ইন্টারনেট সংযোগ পরীক্ষা করুন।";
+      setServerError(errMsg);
+      toast.error("নেটওয়ার্ক সমস্যা", { description: errMsg });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  return (
-    <form
-      className="grid gap-6 border-2 border-foreground bg-card p-6 shadow-[6px_6px_0_var(--foreground)] sm:p-8"
-      onSubmit={handleSubmit(onSubmit)}
-    >
-      {/* Institution */}
-      <div className="grid gap-2">
-        <Label className="text-sm font-bold" htmlFor="institutionName">
-          কোন প্রতিষ্ঠান বা দফতর? <span className="text-destructive">*</span>
-        </Label>
-        <Input
-          id="institutionName"
-          placeholder="যেমন: উপজেলা ভূমি অফিস, শিবচর"
-          {...register("institutionName")}
-          aria-invalid={!!errors.institutionName}
-        />
-        {errors.institutionName && (
-          <p className="text-xs text-destructive">{errors.institutionName.message}</p>
-        )}
-      </div>
+  const onInvalid = useCallback(() => {
+    setAttemptedAdvance(true);
+    const failing = (STEP_FIELDS[currentStep] ?? [])
+      .filter((name) => Boolean(form.formState.errors[name]))
+      .map(String);
+    focusFirstError(failing);
+  }, [currentStep, focusFirstError, form]);
 
-      {/* Category & Area */}
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div className="grid gap-2">
-          <Label className="text-sm font-bold" htmlFor="category">
-            অভিযোগের ধরন <span className="text-destructive">*</span>
-          </Label>
-          <Controller
-            control={control}
-            name="category"
-            render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value || ""}>
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="বেছে নিন" />
-                </SelectTrigger>
-                <SelectContent>
-                  {REPORT_CATEGORIES.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {REPORT_CATEGORY_META[category].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {errors.category && (
-            <p className="text-xs text-destructive">{errors.category.message}</p>
-          )}
+  const handleCopyTrackingId = async () => {
+    if (!trackingId) return;
+    try {
+      await navigator.clipboard.writeText(trackingId);
+      setCopied(true);
+      toast.success("Case ID কপি করা হয়েছে!");
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleCopySecretToken = async () => {
+    if (!secretToken) return;
+    try {
+      await navigator.clipboard.writeText(secretToken);
+      setTokenCopied(true);
+      toast.success("Secret Token কপি করা হয়েছে!");
+      setTimeout(() => setTokenCopied(false), 2500);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const contextValue = useMemo(
+    () => ({
+      form,
+      currentStep,
+      selectedCategory,
+      scenario,
+      needsMoney,
+      goToStep,
+    }),
+    [form, currentStep, selectedCategory, scenario, needsMoney, goToStep],
+  );
+
+  /* ---------------------------------------------------------------- *
+   * Success view
+   * ---------------------------------------------------------------- */
+
+  if (isSuccess) {
+    return (
+      <div className="space-y-6 rounded-none border-2 border-foreground bg-card p-5 text-center shadow-[6px_6px_0_var(--foreground)] sm:p-10">
+        <div className="mx-auto grid size-14 place-items-center rounded-none border-2 border-emerald-600 bg-emerald-500/10 text-emerald-700 shadow-[2px_2px_0_var(--foreground)] dark:text-emerald-300">
+          <CheckCircle2Icon aria-hidden="true" className="size-8" />
         </div>
 
-        <div className="grid gap-2">
-          <Label className="text-sm font-bold" htmlFor="area">
-            ঘটনার এলাকা <span className="text-destructive">*</span>
-          </Label>
-          <Controller
-            control={control}
-            name="area"
-            render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value || ""}>
-                <SelectTrigger id="area">
-                  <SelectValue placeholder="বেছে নিন" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AREAS.map((area) => (
-                    <SelectItem key={area.slug} value={area.slug}>
-                      {area.nameBn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {errors.area && (
-            <p className="text-xs text-destructive">{errors.area.message}</p>
-          )}
+        <div className="space-y-2">
+          <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
+            SUBMISSION CONFIRMED
+          </span>
+          <h2 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">
+            আপনার অভিযোগ সফলভাবে গৃহীত হয়েছে
+          </h2>
+          <p className="mx-auto max-w-md text-xs leading-relaxed text-muted-foreground sm:text-sm">
+            তথ্যটি আমাদের এনক্রিপ্টেড মডারেশন কিউতে পাঠানো হয়েছে। একজন স্বাধীন মডারেটর
+            ব্যক্তিগত তথ্যের সুরক্ষা নিশ্চিত করে এটি পর্যালোচনা করবেন।
+          </p>
         </div>
-      </div>
 
-      {/* Office Name (optional) */}
-      <div className="grid gap-2">
-        <Label className="text-sm font-bold" htmlFor="officeName">
-          শাখা বা অফিসের নাম (যদি থাকে)
-        </Label>
-        <Input
-          id="officeName"
-          placeholder="যেমন: নামজারি শাখা"
-          {...register("officeName")}
-        />
-      </div>
-
-      {/* Incident Date */}
-      <div className="grid gap-2">
-        <Label className="text-sm font-bold" htmlFor="incidentDate">
-          ঘটনার তারিখ বা আনুমানিক সময় <span className="text-destructive">*</span>
-        </Label>
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-          <Input
-            id="incidentDate"
-            type="date"
-            {...register("incidentDate")}
-            aria-invalid={!!errors.incidentDate}
-          />
-          <Controller
-            control={control}
-            name="incidentDatePrecision"
-            render={({ field }) => (
-              <Select onValueChange={field.onChange} value={field.value || "exact"} defaultValue="exact">
-                <SelectTrigger className="sm:w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DATE_PRECISIONS.map((precision) => (
-                    <SelectItem key={precision} value={precision}>
-                      {DATE_PRECISION_META[precision].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-        {errors.incidentDate && (
-          <p className="text-xs text-destructive">{errors.incidentDate.message}</p>
-        )}
-      </div>
-
-      {/* Narrative with PII Detection */}
-      <div className="grid gap-2">
-        <Label className="text-sm font-bold" htmlFor="narrative">
-          কী ঘটেছে? <span className="text-destructive">*</span>
-        </Label>
-        <Textarea
-          className="min-h-40"
-          id="narrative"
-          placeholder="ঘটনাটি সংক্ষেপে, শান্ত ও নিরপেক্ষ ভাষায় লিখুন। নিজের ফোন, NID, বা অপ্রয়োজনীয় ব্যক্তিগত তথ্য দেবেন না।"
-          {...register("narrative")}
-          aria-invalid={!!errors.narrative}
-        />
-        {errors.narrative && (
-          <p className="text-xs text-destructive">{errors.narrative.message}</p>
-        )}
-
-        {/* PII Warnings */}
-        {piiFindings.length > 0 && (
-          <div className="border-l-4 border-destructive bg-destructive/10 p-4">
-            <div className="flex items-start gap-3">
-              <ShieldAlertIcon className="mt-0.5 size-5 shrink-0 text-destructive" />
-              <div>
-                <p className="font-bold text-destructive">
-                  ব্যক্তিগত তথ্য শনাক্ত হয়েছে
-                </p>
-                <ul className="mt-2 space-y-1 text-sm">
-                  {piiFindings.map((finding, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <AlertTriangleIcon className="size-3.5" />
-                      {finding.label}: &quot;{finding.match}&quot;
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  মডারেটর এগুলো সরিয়ে দেবেন, তবে আগেই বাদ দিলে review দ্রুত হবে।
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Optional Fields Toggle */}
-      {!showOptional && (
-        <Button
-          className="w-full"
-          onClick={() => setShowOptional(true)}
-          type="button"
-          variant="outline"
-        >
-          + অতিরিক্ত তথ্য যোগ করুন (ঐচ্ছিক)
-        </Button>
-      )}
-
-      {showOptional && (
-        <div className="grid gap-6 border-t border-border pt-6">
-          {/* Money Section */}
-          {!showMoney && (
-            <Button
-              onClick={() => setShowMoney(true)}
-              type="button"
-              variant="ghost"
-            >
-              + টাকা-সংক্রান্ত তথ্য যোগ করুন
-            </Button>
-          )}
-
-          {showMoney && (
-            <div className="grid gap-4 rounded border border-border bg-muted p-4">
-              <h3 className="font-bold">টাকা-সংক্রান্ত তথ্য</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="moneyAmount">টাকার পরিমাণ</Label>
-                  <Input
-                    id="moneyAmount"
-                    placeholder="যেমন: ২৫০০"
-                    type="number"
-                    {...register("moneyAmount", { valueAsNumber: true })}
-                  />
-                  {errors.moneyAmount && (
-                    <p className="text-xs text-destructive">
-                      {errors.moneyAmount.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="moneyType">চাওয়া না দেওয়া?</Label>
-                  <Controller
-                    control={control}
-                    name="moneyType"
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value || "unknown"} defaultValue="unknown">
-                        <SelectTrigger id="moneyType">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MONEY_TYPES.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {MONEY_TYPE_META[type].label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="officialFee">সরকারি নির্ধারিত ফি (যদি জানা থাকে)</Label>
-                <Input
-                  id="officialFee"
-                  placeholder="যেমন: ১১৫০"
-                  type="number"
-                  {...register("officialFee", { valueAsNumber: true })}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Accused Section */}
-          {!showAccused && (
-            <Button
-              onClick={() => setShowAccused(true)}
-              type="button"
-              variant="ghost"
-            >
-              + অভিযুক্ত ব্যক্তির তথ্য যোগ করুন
-            </Button>
-          )}
-
-          {showAccused && (
-            <div className="grid gap-4 rounded border border-border bg-muted p-4">
-              <h3 className="font-bold">অভিযুক্ত ব্যক্তির তথ্য</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="accusedDesignation">পদবি বা দফতর</Label>
-                  <Input
-                    id="accusedDesignation"
-                    placeholder="যেমন: অফিস সহকারী"
-                    {...register("accusedDesignation")}
-                  />
-                  {errors.accusedDesignation && (
-                    <p className="text-xs text-destructive">
-                      {errors.accusedDesignation.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="accusedName">নাম (শুধু তখনই দিন যদি নিশ্চিত হন)</Label>
-                  <Input
-                    id="accusedName"
-                    placeholder="ঐচ্ছিক"
-                    {...register("accusedName")}
-                  />
-                  {errors.accusedName && (
-                    <p className="text-xs text-destructive">
-                      {errors.accusedName.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                §৭ নীতি: নাম প্রকাশ করার আগে মডারেটর যাচাই করবেন। শুধু পদবি দিলেও রিপোর্ট কার্যকর।
-              </p>
-            </div>
-          )}
-
-          {/* Service Details */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="serviceName">সেবার নাম</Label>
-              <Input
-                id="serviceName"
-                placeholder="যেমন: নামজারি"
-                {...register("serviceName")}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="referenceNumber">রেফারেন্স নম্বর</Label>
-              <Input
-                id="referenceNumber"
-                placeholder="যেমন: আবেদন নম্বর"
-                {...register("referenceNumber")}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Evidence Upload (UI only - backend pending) */}
-      <div className="grid gap-2">
-        <Label className="text-sm font-bold" htmlFor="evidence">
-          প্রমাণ সংযুক্ত করুন
-        </Label>
-        <label
-          className="flex cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed border-border bg-muted p-8 text-center transition hover:border-primary"
-          htmlFor="evidence"
-        >
-          <PaperclipIcon className="size-8 text-primary" />
+        {/* Tracking Codes Vault Card */}
+        <div className="mx-auto max-w-md space-y-4 rounded-none border-2 border-foreground bg-muted/30 p-4 text-left shadow-[4px_4px_0_var(--foreground)] sm:p-5">
+          {/* Case ID */}
           <div>
-            <p className="font-bold">ছবি, নথি বা অডিও যুক্ত করুন</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              ব্যক্তিগত তথ্য আগে ঢেকে দিন
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              ১. আপনার Case ID (ট্র্যাকিং কোড)
+            </p>
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-none border-2 border-foreground bg-background p-2.5">
+              <span className="select-all  text-lg font-extrabold tracking-wider text-foreground">
+                {trackingId}
+              </span>
+              <Button
+                className="h-8 cursor-pointer gap-1.5 rounded-none border-2 border-foreground bg-background text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+                onClick={handleCopyTrackingId}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {copied ? (
+                  <>
+                    <CheckIcon aria-hidden="true" className="size-3.5 text-emerald-600" />
+                    কপি হয়েছে
+                  </>
+                ) : (
+                  <>
+                    <CopyIcon aria-hidden="true" className="size-3.5" />
+                    কপি করুন
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Secret Token */}
+          {secretToken && (
+            <div>
+              <p className=" text-[11px] font-bold uppercase tracking-wider text-destructive">
+                ২. আপনার Secret Token (এককালীন গোপন চাবি)
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-none border-2 border-foreground bg-background p-2.5">
+                <span className="max-w-60 select-all break-all font-mono text-xs font-semibold text-foreground">
+                  {secretToken}
+                </span>
+                <Button
+                  className="h-8 cursor-pointer gap-1.5 rounded-none border-2 border-foreground bg-background text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+                  onClick={handleCopySecretToken}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {tokenCopied ? (
+                    <>
+                      <CheckIcon aria-hidden="true" className="size-3.5 text-emerald-600" />
+                      কপি হয়েছে
+                    </>
+                  ) : (
+                    <>
+                      <CopyIcon aria-hidden="true" className="size-3.5" />
+                      কপি করুন
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            ⚠️ এই দুটি তথ্য কোথাও নিরাপদ স্থানে সংরক্ষণ করুন। ট্র্যাকিং পেজে স্ট্যাটাস দেখতে এই দুটি তথ্যই প্রয়োজন হবে।
+          </p>
+        </div>
+
+        {/* What happens next */}
+        <ol className="mx-auto max-w-md space-y-2 rounded-none border-2 border-border bg-background p-4 text-left">
+          <li className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            এরপর কী হবে
+          </li>
+          {[
+            "একজন স্বাধীন মডারেটর তথ্যগুলো পর্যালোচনা করবেন।",
+            "অনিচ্ছাকৃত ব্যক্তিগত তথ্য থাকলে তা মুছে দেওয়া হবে।",
+            "যাচাই শেষে নথিটি পাবলিক আর্কাইভে প্রকাশিত হবে।",
+          ].map((line, idx) => (
+            <li className="flex items-start gap-2 text-xs text-foreground" key={line}>
+              <span className="grid size-4 shrink-0 place-items-center border border-foreground bg-background text-[9px] font-bold">
+                {(idx + 1).toLocaleString("bn-BD")}
+              </span>
+              <span className="leading-relaxed text-muted-foreground">{line}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div className="flex flex-col items-stretch justify-center gap-3 pt-2 min-[420px]:flex-row min-[420px]:items-center">
+          {secretToken ? (
+            <Button
+              asChild
+              className="cursor-pointer rounded-none border-2 border-foreground bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+            >
+              <Link href={`/track/${encodeURIComponent(trackingId)}?token=${encodeURIComponent(secretToken)}`}>
+                এখনই স্ট্যাটাস ট্র্যাক করুন
+              </Link>
+            </Button>
+          ) : null}
+
+          <Button
+            className="cursor-pointer rounded-none border-2 border-foreground bg-background px-4 py-2 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+            onClick={() => {
+              reset();
+              setCurrentStep(0);
+              setIsSuccess(false);
+              setCopied(false);
+              setTokenCopied(false);
+              setSecretToken("");
+              setTrackingId("");
+              setAttemptedAdvance(false);
+            }}
+            variant="outline"
+          >
+            আরেকটি অভিযোগ দাখিল করুন
+          </Button>
+
+          <Button
+            asChild
+            className="cursor-pointer rounded-none border-2 border-foreground bg-background px-4 py-2 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+            variant="outline"
+          >
+            <Link href="/reports">সকল রিপোর্ট দেখুন</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Wizard
+   * ---------------------------------------------------------------- */
+
+  return (
+    <ReportFormContext.Provider value={contextValue}>
+      <form
+        className="scroll-mt-24 rounded-none border-2 border-foreground bg-card shadow-[6px_6px_0_var(--foreground)] sm:scroll-mt-28 lg:scroll-mt-32"
+        noValidate
+        onSubmit={handleSubmit(onSubmit, onInvalid)}
+        ref={formRef}
+      >
+        {/* Form Header */}
+        <div className="border-b-2 border-foreground bg-muted/20 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="grid size-8 sm:size-9 shrink-0 place-items-center rounded-none border-2 border-foreground bg-background text-primary shadow-[2px_2px_0_var(--foreground)]">
+                <FileTextIcon aria-hidden="true" className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary block leading-none mb-0.5">
+                  WHISTLEBLOWER DESK
+                </span>
+                <h2 className="font-heading text-sm sm:text-base font-bold text-foreground truncate">
+                  অভিযোগের বিবরণ ফরম
+                </h2>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 rounded-none border border-foreground bg-background px-2.5 py-1 text-[10px] sm:text-[11px] font-bold text-foreground shadow-[2px_2px_0_var(--foreground)]">
+              <LockIcon aria-hidden="true" className="size-3 text-primary" />
+              <span className="hidden xs:inline">১০০% বেনামি ও সুরক্ষিত</span>
+              <span className="xs:hidden">বেনামি</span>
+            </div>
+          </div>
+        </div>
+
+        <StepProgress currentStep={currentStep} onStepSelect={goToStep} />
+
+        {/* Step Body */}
+        <div className="p-4 sm:min-h-104 sm:p-7">
+          {serverError && (
+            <div
+              className="mb-5 rounded-none border-2 border-destructive bg-destructive/10 p-3.5 shadow-[2px_2px_0_var(--foreground)]"
+              role="alert"
+            >
+              <div className="flex items-start gap-2.5">
+                <TriangleAlertIcon
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-destructive"
+                />
+                <div className="min-w-0 space-y-1">
+                  <p className="text-xs font-bold text-destructive">
+                    অভিযোগ সাবমিট ব্যর্থ হয়েছে
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-destructive/90">
+                    {serverError}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showErrorSummary && (
+            <div
+              className="mb-5 rounded-none border-2 border-destructive bg-destructive/10 p-3.5 shadow-[2px_2px_0_var(--foreground)]"
+              role="alert"
+            >
+              <div className="flex items-start gap-2.5">
+                <TriangleAlertIcon
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-destructive"
+                />
+                <div className="min-w-0 space-y-1.5">
+                  <p className="text-xs font-bold text-destructive">
+                    এগিয়ে যাওয়ার আগে নিচের বিষয়গুলো ঠিক করুন
+                  </p>
+                  <ul className="space-y-1">
+                    {blockedByPii && (
+                      <li className="text-[11px] leading-relaxed text-destructive/90">
+                        বিবরণে ব্যক্তিগত তথ্য (ফোন, NID বা ইমেইল) রয়ে গেছে — সেটি মুছে দিন।
+                      </li>
+                    )}
+                    {stepErrors.map((item) => (
+                      <li key={item.name}>
+                        <button
+                          className="cursor-pointer text-left text-[11px] leading-relaxed text-destructive/90 underline underline-offset-2 hover:text-destructive"
+                          onClick={() => focusFirstError([item.name])}
+                          type="button"
+                        >
+                          <span className="font-bold">{item.label}:</span>{" "}
+                          {item.message}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 0 && <StepContext />}
+          {currentStep === 1 && <StepNarrative />}
+          {currentStep === 2 && <StepDetails />}
+          {currentStep === 3 && <StepReview />}
+        </div>
+
+        {/* Navigation — sticks to the bottom of the viewport on a phone so Back/Next
+            stay reachable part-way through a long step. Static from `sm` up. */}
+        <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t-2 border-foreground bg-card p-4 sm:static sm:bg-muted/20 sm:p-6">
+          {currentStep > 0 ? (
+            <Button
+              className="cursor-pointer gap-2 rounded-none border-2 border-foreground bg-background text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+              onClick={goBack}
+              type="button"
+              variant="outline"
+            >
+              <ArrowLeftIcon aria-hidden="true" className="size-4" />
+              <span className="hidden min-[380px]:inline">পূর্ববর্তী ধাপ</span>
+              <span className="min-[380px]:hidden">পূর্ববর্তী</span>
+            </Button>
+          ) : (
+            <div />
+          )}
+
+          {currentStep < FORM_STEPS.length - 1 ? (
+            <Button
+              className="cursor-pointer gap-2 rounded-none border-2 border-foreground bg-primary text-xs font-bold text-primary-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+              onClick={goNext}
+              type="button"
+            >
+              পরবর্তী ধাপ
+              <ArrowRightIcon aria-hidden="true" className="size-4" />
+            </Button>
+          ) : (
+            <Button
+              className="cursor-pointer gap-2 rounded-none border-2 border-foreground bg-primary text-xs font-bold text-primary-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
+              disabled={isSubmitting || formSubmitting || hasPii}
+              type="submit"
+            >
+              {isSubmitting || formSubmitting ? (
+                <>
+                  <Loader2Icon aria-hidden="true" className="size-4 animate-spin" />
+                  জমা দেওয়া হচ্ছে…
+                </>
+              ) : (
+                <>
+                  <SendIcon aria-hidden="true" className="size-4" />
+                  <span className="hidden min-[380px]:inline">
+                    নিরাপদে রিপোর্ট জমা দিন
+                  </span>
+                  <span className="min-[380px]:hidden">জমা দিন</span>
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Blocking PII on the final step — the submit button is disabled, so say why. */}
+        {hasPii && currentStep === 3 && (
+          <div
+            className="rounded-none border-t-2 border-destructive bg-destructive/10 p-3 text-center"
+            role="alert"
+          >
+            <p className="text-xs font-bold text-destructive">
+              ⚠ বিবরণে ব্যক্তিগত তথ্য চিহ্নিত হয়েছে। অনুগ্রহ করে{" "}
+              <button
+                className="cursor-pointer underline underline-offset-2"
+                onClick={() => goToStep(1)}
+                type="button"
+              >
+                ধাপ ২-এ ফিরে গিয়ে
+              </button>{" "}
+              ব্যক্তিগত তথ্য মুছে দিন।
             </p>
           </div>
-        </label>
-        <Input
-          accept="image/*,audio/*,video/*,.pdf,.doc,.docx"
-          className="hidden"
-          id="evidence"
-          multiple
-          type="file"
-        />
-        <p className="text-xs text-muted-foreground">
-          ফাইল আপলোড API integration Phase 2-এ যুক্ত হবে
-        </p>
-      </div>
-
-      {/* Anonymous Inbox */}
-      <label className="flex items-start gap-3 text-sm">
-        <input
-          className="mt-1 size-4 accent-primary"
-          type="checkbox"
-          {...register("enableAnonymousInbox")}
-        />
-        <span>
-          গোপন inbox চালু করুন — মডারেটর পরিচয় না জেনেই আপনার সঙ্গে অতিরিক্ত
-          তথ্য চাইতে পারবেন
-        </span>
-      </label>
-
-      {/* Honeypot (hidden) */}
-      <input
-        className="hidden"
-        tabIndex={-1}
-        type="text"
-        {...register("contactReason")}
-      />
-
-      {/* Consent Checkboxes */}
-      <div className="grid gap-3 border-t border-border pt-6">
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            className="mt-1 size-4 accent-primary"
-            type="checkbox"
-            {...register("truthAcknowledged")}
-          />
-          <span>
-            আমার জানা অনুযায়ী এই তথ্য সঠিক এবং আমি ব্যক্তিগত গোপন তথ্য প্রকাশ
-            করিনি। <span className="text-destructive">*</span>
-          </span>
-        </label>
-        {errors.truthAcknowledged && (
-          <p className="text-xs text-destructive">{errors.truthAcknowledged.message}</p>
         )}
-
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            className="mt-1 size-4 accent-primary"
-            type="checkbox"
-            {...register("policyAcknowledged")}
-          />
-          <span>
-            আমি প্রকাশ ও গোপনীয়তা নীতি পড়েছি এবং মেনে নিচ্ছি।{" "}
-            <span className="text-destructive">*</span>
-          </span>
-        </label>
-        {errors.policyAcknowledged && (
-          <p className="text-xs text-destructive">
-            {errors.policyAcknowledged.message}
-          </p>
-        )}
-      </div>
-
-      {/* Submit Button */}
-      <Button
-        className="h-12 w-full shadow-[4px_4px_0_var(--foreground)]"
-        disabled={isSubmitting || hasPii}
-        type="submit"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2Icon className="animate-spin" />
-            জমা হচ্ছে…
-          </>
-        ) : (
-          <>
-            <SendIcon />
-            নিরাপদে জমা দিন
-          </>
-        )}
-      </Button>
-
-      {hasPii && (
-        <p className="text-center text-sm text-destructive">
-          ব্যক্তিগত তথ্য বাদ না দিলে জমা দিতে পারবেন না
-        </p>
-      )}
-    </form>
+      </form>
+    </ReportFormContext.Provider>
   );
 }

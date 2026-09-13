@@ -215,5 +215,3 @@ export const statisticsService = {
   },
 };
 
-// Re-export client API for browser use
-export { api };

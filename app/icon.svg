@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 44">
+  <style>
+    .bubble { fill: #10221e; }
+    .lines { fill: #f7f3e9; }
+    .accent { fill: #e95132; }
+    @media (prefers-color-scheme: dark) {
+      .bubble { fill: #f7f3e9; }
+      .lines { fill: #10221e; }
+      .accent { fill: #e95132; }
+    }
+  </style>
+  <path class="bubble" d="M3 3h27v28H18L7 41V31H3V3Z" fill="#10221e" />
+  <path class="lines" d="M11 11h12v3H11zm0 7h9v3h-9z" fill="#f7f3e9" />
+  <path class="accent" d="M30 3h7v20h-7z" fill="#e95132" />
+</svg>

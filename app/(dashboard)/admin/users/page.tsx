@@ -1,13 +1,11 @@
-import { PlusIcon } from "lucide-react";
-
 import { AccessDenied } from "@/components/admin/access-denied";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { CreateUserDialog } from "@/components/admin/create-user-dialog";
 import {
   CellStack,
   DataTable,
   type Column,
 } from "@/components/admin/data-table";
-import { Button } from "@/components/ui/button";
 import { MetaBadge } from "@/components/ui/status-badge";
 import { guard } from "@/lib/auth/dal";
 import { can, capabilitiesFor } from "@/lib/auth/permissions";
@@ -84,14 +82,7 @@ export default async function AdminUsersPage() {
   return (
     <>
       <AdminPageHeader
-        actions={
-          mayWrite && (
-            <Button disabled>
-              <PlusIcon />
-              নতুন স্টাফ
-            </Button>
-          )
-        }
+        actions={mayWrite && <CreateUserDialog />}
         description="মডারেটর ও অ্যাডমিন অ্যাকাউন্ট। ভূমিকা পরিবর্তনের প্রতিটি ঘটনা audit log-এ সংরক্ষিত হয়।"
         title="ব্যবহারকারী"
       />

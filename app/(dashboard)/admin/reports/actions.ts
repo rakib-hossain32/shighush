@@ -5,26 +5,7 @@ import { revalidatePath } from "next/cache";
 import { assertCapability } from "@/lib/auth/dal";
 import { moderationDecisionSchema } from "@/lib/domain/schemas";
 import type { Capability } from "@/lib/auth/permissions";
-
-/**
- * Moderation Server Actions.
- *
- * Two rules hold for every action here:
- *
- *  1. **Re-check the capability.** The buttons that trigger these are already hidden from
- *     a Moderator who lacks the permission, but a Server Action is a public endpoint —
- *     anyone who can reach the page can POST to it. `assertCapability` is the real check;
- *     hiding the button is only an affordance.
- *
- *  2. **Validate with the same schema the form uses.** `moderationDecisionSchema` enforces
- *     the rules that matter to the archive: publishing requires a verification level and a
- *     neutral title (§16.5), and rejecting or removing requires a written reason so the
- *     decision can be audited and appealed (§16.8).
- *
- * The writes themselves are stubs until Phase 2 wires the Express API. The signatures,
- * validation and authorization are final, so wiring is one `await apiRequest(...)` per
- * function rather than a rewrite.
- */
+import { updateReportStatus, assignReport, redactReport } from "@/services";
 
 export type ModerationState = {
   ok?: boolean;
@@ -86,12 +67,24 @@ export async function submitModerationDecision(
     };
   }
 
-  // TODO(Phase 2): PATCH /api/v1/admin/reports/:id/status — plus an `auditLogs` entry
-  // recording actor, decision and redaction notes (§10, §16.8).
+  try {
+    await updateReportStatus(parsed.data.reportId, {
+      decision: parsed.data.decision,
+      verificationLevel: parsed.data.verificationLevel,
+      publicTitle: parsed.data.publicTitle,
+      publicSummary: parsed.data.publicSummary,
+      redactionNotes: parsed.data.redactionNotes,
+      moderatorNote: parsed.data.moderatorNote,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "সার্ভারে সিদ্ধান্ত সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।";
+    return { error: message };
+  }
 
   revalidatePath("/admin/reports");
   revalidatePath(`/admin/reports/${parsed.data.reportId}`);
   revalidatePath("/admin");
+  revalidatePath("/reports");
 
   return { ok: true };
 }
@@ -104,7 +97,37 @@ export async function assignToMe(reportId: string): Promise<ModerationState> {
     return { error: "এই কাজের অনুমতি নেই।" };
   }
 
-  // TODO(Phase 2): POST /api/v1/admin/reports/:id/assign
+  try {
+    await assignReport(reportId);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "দায়িত্ব গ্রহণ করা সম্ভব হয়নি।";
+    return { error: message };
+  }
+
+  revalidatePath(`/admin/reports/${reportId}`);
+  revalidatePath("/admin/reports");
+  return { ok: true };
+}
+
+/** Redacts sensitive information from narrative */
+export async function redactReportAction(
+  reportId: string,
+  narrative: string
+): Promise<ModerationState> {
+  try {
+    await assertCapability("report:redact");
+  } catch {
+    return { error: "ব্যক্তিগত তথ্য রিডাক্ট করার অনুমতি নেই।" };
+  }
+
+  try {
+    await redactReport(reportId, { narrative });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "রিডাকশন সংরক্ষণ করা সম্ভব হয়নি।";
+    return { error: message };
+  }
+
   revalidatePath(`/admin/reports/${reportId}`);
   return { ok: true };
 }
+

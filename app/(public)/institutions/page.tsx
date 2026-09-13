@@ -6,6 +6,7 @@ import { InstitutionToolbar } from "@/components/sections/institutions/instituti
 import { AREAS } from "@/lib/domain/geo";
 import { institutionFilterSchema, parseFilters } from "@/lib/domain/schemas";
 import { getStatistics, getInstitutions } from "@/services";
+import type { InstitutionCategory } from "@/lib/domain/enums";
 import { createPageMetadata } from "@/lib/seo";
 import { formatBnCount } from "@/lib/format";
 
@@ -28,7 +29,7 @@ export default async function InstitutionsPage({ searchParams }: InstitutionsPag
     page: filters.page,
     limit: 12,
     search: filters.search,
-    category: filters.category,
+    category: filters.category as InstitutionCategory | InstitutionCategory[] | undefined,
     area: filters.area,
   });
 
@@ -45,8 +46,10 @@ export default async function InstitutionsPage({ searchParams }: InstitutionsPag
 
   return (
     <PageFrame
+      badgeText={`${meta.total} প্রতিষ্ঠান তালিকাভুক্ত`}
+      breadcrumbs={[{ label: "সেবা প্রতিষ্ঠানের রেকর্ড" }]}
       copy="শিবচরের সরকারি ও আধা-সরকারি প্রতিষ্ঠানের প্রাথমিক সূচি। প্রতিটি প্রোফাইলে প্রাসঙ্গিক রিপোর্ট, যাচাইয়ের স্তর, আপডেটের সময় এবং প্রতিষ্ঠানের উত্তর এক জায়গায় থাকবে।"
-      eyebrow="প্রতিষ্ঠান সূচি / শিবচর"
+      eyebrow="প্রতিষ্ঠান সূচি / শিবচর উপজেলা"
       title="সেবা প্রতিষ্ঠানের রেকর্ড"
     >
       <div className="grid gap-8">

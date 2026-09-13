@@ -115,6 +115,16 @@ export function updateReportStatus<TPayload, TResult>(
   });
 }
 
+export function assignReport(reportId: string) {
+  return apiRequest<ApiSuccessResponse<{ id: string; assignedTo: { id: string; name: string } }>>(
+    `reports/${reportId}/assign`,
+    {
+      method: "POST",
+      revalidate: false,
+    }
+  );
+}
+
 export function redactReport<TPayload, TResult>(reportId: string, payload: TPayload) {
   return apiRequest<ApiSuccessResponse<TResult>>(`reports/${reportId}/redact`, {
     method: "PATCH",
