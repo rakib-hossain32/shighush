@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Filter, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Check, RotateCcw, SlidersHorizontal } from "lucide-react";
 
 import {
   REPORT_CATEGORIES,
@@ -50,6 +50,7 @@ export function ReportsFilterPanel({
     (filters.category?.length || 0) +
     (filters.verificationLevel?.length || 0) +
     (filters.area?.length || 0) +
+    (filters.institution ? 1 : 0) +
     (filters.search ? 1 : 0);
 
   return (

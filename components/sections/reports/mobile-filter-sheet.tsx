@@ -31,7 +31,9 @@ export function MobileFilterSheet({ filters }: { filters: ReportFilterInput }) {
   const activeCount =
     filters.category.length +
     filters.verificationLevel.length +
-    filters.area.length;
+    filters.area.length +
+    (filters.institution ? 1 : 0) +
+    (filters.search ? 1 : 0);
 
   return (
     <div className="border-b border-border py-3 lg:hidden">

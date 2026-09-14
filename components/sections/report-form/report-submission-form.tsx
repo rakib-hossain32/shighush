@@ -69,10 +69,12 @@ export function ReportSubmissionForm() {
     resolver: zodResolver(reportSubmitSchema) as Resolver<ReportSubmitInput>,
     mode: "onTouched",
     defaultValues: {
+      title: "",
       institutionName: "",
+      institutionNameUnknown: false,
       officeName: "",
       category: undefined,
-      area: undefined,
+      area: "unknown",
       incidentDate: "",
       incidentDatePrecision: "exact",
       narrative: "",
@@ -159,9 +161,10 @@ export function ReportSubmissionForm() {
   const validateCurrentStep = useCallback(async (): Promise<boolean> => {
     if (currentStep === 0) {
       return trigger([
-        "institutionName",
+        "title",
         "category",
-        "area",
+        "institutionName",
+        "institutionNameUnknown",
         "incidentDate",
         "incidentDatePrecision",
         "officeName",

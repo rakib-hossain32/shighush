@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { ArrowRight, FileQuestion, FilterX, Plus, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  FileQuestion,
+  FilterX,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 
 import { PageFrame } from "@/components/page-frame";
 import { Pagination } from "@/components/pagination";
-import { MobileFilterSheet } from "@/components/sections/reports/mobile-filter-sheet";
 import { ReportListCard } from "@/components/sections/reports/report-list-card";
-import { ReportsFilterPanel } from "@/components/sections/reports/reports-filter-panel";
+import { ReportsFilterControls } from "@/components/sections/reports/reports-filter-controls";
 import { ReportsToolbar } from "@/components/sections/reports/reports-toolbar";
 import { parseFilters, reportFilterSchema } from "@/lib/domain/schemas";
 import { getReports } from "@/services";
@@ -26,10 +31,13 @@ type ReportsPageProps = {
 
 const QUICK_FILTERS = [
   { label: "সব নথি", href: "/reports" },
-  { label: "প্রমাণ সংযুক্ত", href: "/reports?verificationLevel=evidence_attached" },
+  {
+    label: "প্রমাণ সংযুক্ত",
+    href: "/reports?verificationLevel=evidence_attached",
+  },
   { label: "ঘুষ ও অতিরিক্ত অর্থ", href: "/reports?category=bribery" },
   { label: "সেবা-বঞ্চনা", href: "/reports?category=service_denial" },
-  { label: "পৌরসভা এলাকা", href: "/reports?area=shibchar_pourashava" },
+  { label: "পৌরসভা এলাকা", href: "/reports?area=shibchar-municipality" },
 ];
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
@@ -41,17 +49,26 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     limit: filters.limit,
     search: filters.search,
     category: filters.category as ReportCategory | ReportCategory[] | undefined,
-    verificationLevel: filters.verificationLevel as VerificationLevel | VerificationLevel[] | undefined,
+    verificationLevel: filters.verificationLevel as
+      | VerificationLevel
+      | VerificationLevel[]
+      | undefined,
     area: filters.area,
     institution: filters.institution,
     sort: filters.sort,
   });
 
   const reports = response?.data ?? [];
-  const meta = response?.meta ?? { total: 0, page: 1, limit: 20, totalPages: 0 };
+  const meta = response?.meta ?? {
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0,
+  };
 
   const hasActiveFilters =
     Boolean(filters.search) ||
+    Boolean(filters.institution) ||
     (filters.category && filters.category.length > 0) ||
     (filters.verificationLevel && filters.verificationLevel.length > 0) ||
     (filters.area && filters.area.length > 0);
@@ -60,7 +77,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     <PageFrame
       badgeText={`${formatBnNumber(meta.total)} নথি প্রকাশিত`}
       breadcrumbs={[{ label: "অভিযোগের রেকর্ড" }]}
-      copy="প্রতিটি নথি একটি নাগরিক-প্রতিবেদন; এটি কোনো অপরাধের চূড়ান্ত প্রমাণ নয়। যাচাইয়ের স্তর, প্রকাশের তারিখ এবং প্রাসঙ্গিক তথ্য আলাদা করে দেখানো হয়।"
+      copy="প্রতিটি নথির শিরোনাম অভিযোগকারী নিজে লিখেছেন। প্রতিষ্ঠান, শাখা/অফিস, প্রশাসনিক এলাকা ও যাচাইয়ের স্তর আলাদা করে দেখানো হয়; কোনো নথিই অপরাধের চূড়ান্ত প্রমাণ নয়।"
       eyebrow="নথি ভাণ্ডার / নাগরিক রেকর্ড"
       title="অভিযোগের আর্কাইভ ও রেকর্ড"
       action={
@@ -74,7 +91,10 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       }
       stats={[
         { label: "মোট প্রকাশিত নথি", value: meta.total },
-        { label: "বর্তমান পাতা", value: `${meta.page} / ${meta.totalPages || 1}` },
+        {
+          label: "বর্তমান পাতা",
+          value: `${meta.page} / ${meta.totalPages || 1}`,
+        },
       ]}
     >
       <div className="space-y-6">
@@ -95,27 +115,36 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           ))}
         </div>
 
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-border bg-muted/30 px-3.5 py-3 text-xs text-muted-foreground sm:px-4">
+          <span>
+            <strong className="text-foreground">শিরোনাম:</strong> অভিযোগের মূল
+            বক্তব্য
+          </span>
+          <span>
+            <strong className="text-foreground">প্রতিষ্ঠান:</strong> লক্ষ্য অফিস
+            বা সেবা-কেন্দ্র
+          </span>
+          <span>
+            <strong className="text-foreground">এলাকা:</strong> ইউনিয়ন / পৌরসভা
+            স্তর
+          </span>
+        </div>
+
         {/* Main Grid: Filters + List */}
         <form
           action="/reports"
-          className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] items-start"
+          className="space-y-4"
+          id="reports-filter-form"
           method="GET"
         >
-          {/* Desktop Filter Sidebar */}
-          <ReportsFilterPanel
-            className="hidden lg:block lg:sticky lg:top-20"
-            filters={filters}
-          />
-
-          {/* Main Results Column */}
           <div className="space-y-4">
             {/* Toolbar: Search + Sort */}
-            <ReportsToolbar count={meta.total} search={filters.search} sort={filters.sort} />
-
-            {/* Mobile Sheet Trigger */}
-            <div className="lg:hidden">
-              <MobileFilterSheet filters={filters} />
-            </div>
+            <ReportsToolbar
+              count={meta.total}
+              filterControls={<ReportsFilterControls filters={filters} />}
+              search={filters.search}
+              sort={filters.sort}
+            />
 
             {/* Reports List */}
             {reports.length > 0 ? (
@@ -134,7 +163,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                   এই ফিল্টারে কোনো নাগরিক নথি পাওয়া যায়নি
                 </h3>
                 <p className="mt-1.5 text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-                  অন্য কোনো এলাকা, সেবার ধরন বা যাচাইয়ের স্তর নির্বাচন করে দেখতে পারেন। অথবা ফিল্টার রিসেট করুন।
+                  অন্য কোনো এলাকা, সেবার ধরন বা যাচাইয়ের স্তর নির্বাচন করে দেখতে
+                  পারেন। অথবা ফিল্টার রিসেট করুন।
                 </p>
 
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

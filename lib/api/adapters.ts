@@ -26,6 +26,7 @@ import type {
   AppealStatus,
   FlagReason
 } from '@/lib/domain/enums';
+import { officeNameBn } from '@/lib/domain/office-name';
 
 function toIsoString(val: unknown): string {
   if (!val) return new Date().toISOString();
@@ -62,6 +63,7 @@ export function adaptPublicReport(apiReport: any): PublicReport {
     },
     location: {
       area: apiReport.incidentLocation || apiReport.area || apiReport.location?.area || 'unknown',
+      officeName: officeNameBn(apiReport.officeName || apiReport.location?.officeName),
     },
     incidentDate: typeof apiReport.incidentDate === 'string' 
       ? { exact: apiReport.incidentDate } 

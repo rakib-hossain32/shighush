@@ -23,10 +23,15 @@ export async function submitReportAction(
 
     // Call backend API service
     const response = await submitReport<
-      Omit<ReportSubmitInput, "truthAcknowledged" | "policyAcknowledged">,
+      Omit<
+        ReportSubmitInput,
+        "truthAcknowledged" | "policyAcknowledged"
+      >,
       { caseId: string; secretToken: string; id: string; message?: string }
     >({
-      institutionName: validated.institutionName,
+      title: validated.title,
+      institutionName: validated.institutionName || "অজানা প্রতিষ্ঠান",
+      institutionNameUnknown: validated.institutionNameUnknown,
       category: validated.category,
       area: validated.area,
       officeName: validated.officeName,

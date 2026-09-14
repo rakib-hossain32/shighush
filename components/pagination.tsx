@@ -16,16 +16,18 @@ export function Pagination({
   meta,
   basePath,
   params = {},
+  showSinglePage = false,
 }: {
   meta: PaginationMeta;
   basePath: string;
   params?: Record<string, string | string[] | undefined>;
+  showSinglePage?: boolean;
 }) {
   // Safety: handle undefined or invalid meta
   const safeMeta = meta || { page: 1, limit: 20, total: 0, totalPages: 1 };
   const { page = 1, totalPages = 1, total = 0 } = safeMeta;
   
-  if (totalPages <= 1) return null;
+  if (totalPages <= 1 && !showSinglePage) return null;
 
   const href = (page: number) => {
     const query = new URLSearchParams();

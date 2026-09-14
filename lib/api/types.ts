@@ -43,11 +43,15 @@ export interface PaginatedResponse<T> {
 export interface ApiReport {
   _id: string;
   caseId: string;
+  title: string;
   category: ReportCategory;
   status: ReportStatus;
   institutionId: string;
   institutionName: string;
+  institutionNameUnknown?: boolean;
   institutionSlug?: string;
+  area?: string;
+  officeName?: string;
   narrative: string;
   incidentDate: string; // ISO date string
   incidentLocation: string;
@@ -78,9 +82,13 @@ export interface ReportListResponse {
 }
 
 export interface ReportCreateData {
+  title: string;
   category: ReportCategory;
   institutionId: string;
   institutionName: string;
+  institutionNameUnknown?: boolean;
+  area?: string;
+  officeName?: string;
   narrative: string;
   incidentDate: string;
   incidentLocation: string;

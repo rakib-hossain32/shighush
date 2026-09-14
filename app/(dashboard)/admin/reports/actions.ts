@@ -1,11 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
+import { isReviewable } from "@/lib/domain/moderation";
 
 import { assertCapability } from "@/lib/auth/dal";
 import { moderationDecisionSchema } from "@/lib/domain/schemas";
 import type { Capability } from "@/lib/auth/permissions";
-import { updateReportStatus, assignReport, redactReport } from "@/services";
+import { updateReportStatus, assignReport, redactReport, getModerationReport } from "@/services";
 
 export type ModerationState = {
   ok?: boolean;
@@ -28,6 +30,8 @@ export async function submitModerationDecision(
   const raw = {
     reportId: String(formData.get("reportId") ?? ""),
     decision: String(formData.get("decision") ?? ""),
+    publicNarrative: String(formData.get("publicNarrative") ?? "") || undefined,
+    expectedUpdatedAt: String(formData.get("expectedUpdatedAt") ?? "") || undefined,
     verificationLevel: formData.get("verificationLevel")
       ? String(formData.get("verificationLevel"))
       : undefined,
@@ -57,7 +61,11 @@ export async function submitModerationDecision(
 
   const capability = CAPABILITY_BY_DECISION[parsed.data.decision];
   try {
-    await assertCapability(capability);
+    const session = await assertCapability(capability);
+    const current = await getModerationReport(parsed.data.reportId);
+    if (!current?.data) return { error: "নথিটি পাওয়া যায়নি।" };
+    if (session.role !== "Admin" && current.data.assignedTo?.id !== session.userId) return { error: "এই নথির দায়িত্ব আপনার কাছে নেই।" };
+    if (parsed.data.decision !== "remove" && !isReviewable(current.data)) return { error: "এই নথির পর্যালোচনা শেষ হয়েছে। আবার প্রকাশ করা যাবে না।" };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     return {
@@ -70,6 +78,8 @@ export async function submitModerationDecision(
   try {
     await updateReportStatus(parsed.data.reportId, {
       decision: parsed.data.decision,
+      publicNarrative: parsed.data.publicNarrative,
+      expectedUpdatedAt: parsed.data.expectedUpdatedAt,
       verificationLevel: parsed.data.verificationLevel,
       publicTitle: parsed.data.publicTitle,
       publicSummary: parsed.data.publicSummary,
@@ -86,27 +96,27 @@ export async function submitModerationDecision(
   revalidatePath("/admin");
   revalidatePath("/reports");
 
-  return { ok: true };
+  revalidateTag("reports", { expire: 0 });
+  revalidateTag(`report:${parsed.data.reportId}`, { expire: 0 });
+  redirect(`/admin/reports?notice=${parsed.data.decision === "request_info" ? "saved" : "completed"}`);
 }
 
-/** Claims a report so two moderators do not review the same item (§16.1). */
-export async function assignToMe(reportId: string): Promise<ModerationState> {
+/** Only an admin may choose or clear a report's assigned moderator. */
+export async function assignModerator(_previous: ModerationState, formData: FormData): Promise<ModerationState> {
   try {
-    await assertCapability("report:review");
-  } catch {
-    return { error: "এই কাজের অনুমতি নেই।" };
+    await assertCapability("user:write");
+    const reportId = String(formData.get("reportId") ?? "");
+    const moderatorId = String(formData.get("moderatorId") ?? "");
+    if (!/^[a-f0-9]{24}$/i.test(reportId)) return { error: "নথিটি পাওয়া যায়নি।" };
+    await assignReport(reportId, moderatorId || null);
+    revalidatePath("/admin/reports");
+    revalidatePath(`/admin/reports/${reportId}`);
+    revalidateTag("moderation-queue", { expire: 0 });
+    revalidateTag(`report:${reportId}`, { expire: 0 });
+    return { ok: true };
+  } catch (error) {
+    return { error: error instanceof Error && !error.message.startsWith("FORBIDDEN") ? error.message : "শুধু অ্যাডমিন মডারেটর নির্বাচন করতে পারবেন।" };
   }
-
-  try {
-    await assignReport(reportId);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "দায়িত্ব গ্রহণ করা সম্ভব হয়নি।";
-    return { error: message };
-  }
-
-  revalidatePath(`/admin/reports/${reportId}`);
-  revalidatePath("/admin/reports");
-  return { ok: true };
 }
 
 /** Redacts sensitive information from narrative */

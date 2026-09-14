@@ -875,3 +875,11 @@ select:focus-visible,
   }
 }
 
+/* Ensure Sonner toast notifications inherit the Hind Siliguri Bangla font */
+[data-sonner-toaster],
+[data-sonner-toast],
+[data-sonner-toast] [data-title],
+[data-sonner-toast] [data-description] {
+  font-family: var(--font-bangla), sans-serif !important;
+}
+

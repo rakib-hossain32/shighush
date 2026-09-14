@@ -259,9 +259,9 @@ export type StepId = (typeof FORM_STEPS)[number]["id"];
  */
 export const STEP_FIELDS: ReadonlyArray<ReadonlyArray<keyof ReportSubmitInput>> = [
   [
-    "institutionName",
+    "title",
     "category",
-    "area",
+    "institutionName",
     "officeName",
     "incidentDate",
     "incidentDatePrecision",
@@ -284,9 +284,11 @@ export const STEP_FIELDS: ReadonlyArray<ReadonlyArray<keyof ReportSubmitInput>> 
  * keys (`institutionName`), which tells a Bengali-speaking reporter nothing.
  */
 export const FIELD_LABELS: Partial<Record<keyof ReportSubmitInput, string>> = {
+  title: "অভিযোগের শিরোনাম",
   institutionName: "প্রতিষ্ঠানের নাম",
   category: "অভিযোগের ধরন",
-  area: "ঘটনার এলাকা",
+  area: "প্রতিষ্ঠানের এলাকা",
+  institutionNameUnknown: "প্রতিষ্ঠানের নাম জানা নেই",
   officeName: "শাখা / অফিসের নাম",
   incidentDate: "ঘটনার তারিখ",
   incidentDatePrecision: "তারিখের নির্ভুলতা",

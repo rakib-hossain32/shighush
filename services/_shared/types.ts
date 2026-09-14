@@ -121,6 +121,8 @@ export type InstitutionListParams = {
 
 /** Staff-only. Adds the internal statuses and the PII filter. */
 export type ModerationListParams = {
+  view?: "all" | "active" | "completed";
+  assignment?: "all" | "mine" | "unassigned";
   page?: number;
   limit?: number;
   search?: string;
@@ -144,6 +146,8 @@ export type EvidenceSummary = {
   visibility: EvidenceVisibility;
   /** Present only when `visibility === "redacted_public"`. */
   publicPath?: string;
+  /** Authenticated moderation response only. */
+  reviewPath?: string;
   metadataRemovedAt?: string;
 };
 
@@ -173,6 +177,8 @@ export type PublicReport = {
   institution: InstitutionRef;
   /** Fallback field when institution is not populated */
   institutionName?: string;
+  /** True when the reporter explicitly could not identify the institution. */
+  institutionNameUnknown?: boolean;
   location: ApiLocation;
   incidentDate?: IncidentDate;
   money?: ReportedMoney;

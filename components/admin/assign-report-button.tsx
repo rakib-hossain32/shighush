@@ -1,64 +1,118 @@
 "use client";
 
-import { useTransition } from "react";
-import { UserCheckIcon, Loader2Icon } from "lucide-react";
-import { toast } from "sonner";
+import { useActionState, useState, useTransition } from "react";
+import { Loader2, RefreshCw, Sparkles, UserRoundCheck } from "lucide-react";
+import { assignModerator, type ModerationState } from "@/app/(dashboard)/admin/reports/actions";
 import { Button } from "@/components/ui/button";
-import { assignToMe } from "@/app/(dashboard)/admin/reports/actions";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function AssignReportButton({
   reportId,
-  isAssigned,
-  assignedName,
+  assignedId,
+  moderators,
 }: {
   reportId: string;
-  isAssigned?: boolean;
-  assignedName?: string;
+  assignedId?: string;
+  moderators: Array<{ id: string; name: string }>;
 }) {
-  const [isPending, startTransition] = useTransition();
+  const [state, action, pending] = useActionState<ModerationState, FormData>(assignModerator, {});
+  const [value, setValue] = useState(assignedId ?? "");
+  const [isAutoPending, startAutoTransition] = useTransition();
 
-  const handleAssign = () => {
-    startTransition(async () => {
-      const res = await assignToMe(reportId);
-      if (res.ok) {
-        toast.success("নথির রিভিউ দায়িত্ব নেওয়া হয়েছে!", {
-          description: "এখন আপনি নথিটি পর্যালোচনা ও মডারেশন করতে পারবেন।",
-        });
-      } else {
-        toast.error("দায়িত্ব নেওয়া সম্ভব হয়নি", {
-          description: res.error,
-        });
-      }
+  const handleAutoAssign = () => {
+    startAutoTransition(async () => {
+      const formData = new FormData();
+      formData.append("reportId", reportId);
+      formData.append("moderatorId", "auto");
+      await action(formData);
     });
   };
 
-  if (isAssigned) {
-    return (
-      <div className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-        <UserCheckIcon className="h-3.5 w-3.5 shrink-0" />
-        <span>{assignedName ?? "দায়িত্ব নেওয়া হয়েছে"}</span>
-      </div>
-    );
-  }
+  const isWorking = pending || isAutoPending;
+  const currentAssignedMod = moderators.find((user) => user.id === value);
 
   return (
-    <Button
-      variant="outline"
-      onClick={handleAssign}
-      disabled={isPending}
-      className="cursor-pointer gap-1.5"
-    >
-      {isPending ? (
-        <>
-          <Loader2Icon className="h-4 w-4 animate-spin" />
-          দায়িত্ব নেওয়া হচ্ছে...
-        </>
-      ) : (
-        <>
-          <UserCheckIcon className="h-4 w-4 text-primary" />
-          দায়িত্ব নিন
-        </>
-      )}
-    </Button>
+    <div className="space-y-3">
+      <form action={action} className="grid gap-3">
+        <input name="reportId" type="hidden" value={reportId} />
+        <input name="moderatorId" type="hidden" value={value} />
+        <Label className="sr-only" htmlFor="moderatorId">
+          মডারেটর নির্বাচন করুন
+        </Label>
+        <Select value={value} onValueChange={(val) => setValue(val ?? "")}>
+          <SelectTrigger
+            className="h-10 w-full rounded-none border-2 border-border bg-background px-3 text-xs font-bold text-foreground shadow-none hover:border-foreground"
+            id="moderatorId"
+          >
+            <SelectValue placeholder="দায়িত্বপ্রাপ্ত বাছাই করুন">
+              {value === "auto"
+                ? "🔄 স্বয়ংক্রিয় বণ্টন (Round Robin)"
+                : currentAssignedMod?.name ??
+                  (value === "" ? "দায়িত্ব দেওয়া হয়নি" : undefined)}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="rounded-none border-2 border-foreground bg-card shadow-[4px_4px_0_var(--foreground)]">
+            <SelectItem className="rounded-none text-xs font-medium cursor-pointer" value="">
+              দায়িত্ব দেওয়া হয়নি
+            </SelectItem>
+            <SelectItem
+              className="rounded-none text-xs font-bold text-primary cursor-pointer border-b border-border/60"
+              value="auto"
+            >
+              🔄 স্বয়ংক্রিয় বণ্টন (Round Robin)
+            </SelectItem>
+            {moderators.map((user) => (
+              <SelectItem className="rounded-none text-xs font-medium cursor-pointer" key={user.id} value={user.id}>
+                {user.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {!moderators.length && (
+          <p className="text-xs leading-6 text-muted-foreground">
+            কোনো Moderator পাওয়া যায়নি। আগে ব্যবহারকারী ব্যবস্থাপনা থেকে Moderator যোগ করুন।
+          </p>
+        )}
+        {state.error && (
+          <p className="text-sm text-destructive" role="alert">
+            {state.error}
+          </p>
+        )}
+        {state.ok && (
+          <p className="text-sm text-secondary-foreground" role="status">
+            দায়িত্ব হালনাগাদ হয়েছে।
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Button
+            className="h-10 w-full cursor-pointer rounded-none border-2 border-foreground bg-primary px-3 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none disabled:pointer-events-none disabled:opacity-50"
+            disabled={isWorking || (!moderators.length && !assignedId)}
+            type="submit"
+          >
+            {pending ? <Loader2 className="animate-spin size-4" /> : <UserRoundCheck className="size-4" />}
+            <span>{pending ? "সংরক্ষণ হচ্ছে…" : "দায়িত্ব সংরক্ষণ"}</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleAutoAssign}
+            disabled={isWorking || !moderators.length}
+            className="h-10 w-full cursor-pointer rounded-none border-2 border-foreground bg-background px-3 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+          >
+            {isAutoPending ? <Loader2 className="animate-spin size-4" /> : <RefreshCw className="size-3.5" />}
+            <span>রাউন্ড-রবিন বণ্টন</span>
+          </Button>
+        </div>
+      </form>
+
+      <div className="flex items-center gap-1.5 rounded-none border border-border/80 bg-muted/30 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+        <Sparkles className="size-3 text-primary shrink-0" />
+        <span>নতুন রিপোর্ট স্বয়ংক্রিয়ভাবে চক্রাকারে (১→২→৩) বণ্টন হয়।</span>
+      </div>
+    </div>
   );
 }

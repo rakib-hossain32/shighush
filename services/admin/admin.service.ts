@@ -1,4 +1,5 @@
 import "server-only";
+import { normalizeModerationReport } from "@/lib/domain/moderation";
 import { apiRequest } from "@/services/_shared/server-api-client";
 import type {
   ApiListResponse,
@@ -43,7 +44,8 @@ export function getUsers(params: UserListParams = {}) {
   return apiRequest<ApiListResponse<StaffUser>>("admin/users", {
     query: params,
     tags: ["admin-users"],
-    revalidate: 60,
+    revalidate: false,
+    cache: "no-store",
   });
 }
 
@@ -85,23 +87,27 @@ export function getAuditLogs(params: AuditLogListParams = {}) {
 /**
  * Moderation Queue
  */
-export function getModerationQueue(params: ModerationListParams = {}) {
-  return apiRequest<ApiListResponse<ModerationReport>>("reports", {
+export async function getModerationQueue(params: ModerationListParams = {}) {
+  const response = await apiRequest<ApiListResponse<ModerationReport>>("reports", {
     query: {
       ...params,
       // Include all statuses for moderation view
-      status: params.status || ["received", "under_review", "published", "rejected"],
+      status: params.status,
     },
     tags: ["moderation-queue"],
-    revalidate: 15, // Fresh data every 15 seconds for active queue
+    revalidate: false,
+    cache: "no-store",
   });
+  return { ...response, data: Array.isArray(response?.data) ? response.data.filter((item) => item?.id).map(normalizeModerationReport) : [] };
 }
 
-export function getModerationReport(id: string) {
-  return apiRequest<ApiSuccessResponse<ModerationReport>>(`reports/${id}`, {
+export async function getModerationReport(id: string) {
+  const response = await apiRequest<ApiSuccessResponse<ModerationReport>>(`reports/${encodeURIComponent(id)}`, {
     tags: ["moderation-queue", `report:${id}`],
-    revalidate: 30,
+    revalidate: false,
+    cache: "no-store",
   });
+  return response?.data ? { ...response, data: normalizeModerationReport(response.data) } : null;
 }
 
 export function updateReportStatus<TPayload, TResult>(
@@ -115,11 +121,12 @@ export function updateReportStatus<TPayload, TResult>(
   });
 }
 
-export function assignReport(reportId: string) {
+export function assignReport(reportId: string, moderatorId: string | null) {
   return apiRequest<ApiSuccessResponse<{ id: string; assignedTo: { id: string; name: string } }>>(
     `reports/${reportId}/assign`,
     {
       method: "POST",
+      body: { moderatorId },
       revalidate: false,
     }
   );

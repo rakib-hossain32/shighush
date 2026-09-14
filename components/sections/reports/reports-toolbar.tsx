@@ -1,16 +1,21 @@
 import { ArrowUpDown, FileText, Search } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { REPORT_SORTS, REPORT_SORT_META } from "@/lib/domain/enums";
 import { formatBnNumber } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function ReportsToolbar({
   count,
   search,
   sort,
+  filterControls,
 }: {
   count: number;
   search?: string;
   sort: string;
+  filterControls?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-4 border-2 border-border bg-card p-3.5 sm:p-4 shadow-[3px_3px_0_var(--foreground)] sm:flex-row sm:items-center sm:justify-between">
@@ -18,12 +23,12 @@ export function ReportsToolbar({
       <div className="relative flex-1 min-w-0 max-w-md">
         <label className="relative flex items-center">
           <Search className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
-          <span className="sr-only">প্রতিষ্ঠান, এলাকা বা নথি নম্বর</span>
-          <input
-            className="h-10 w-full border-2 border-border bg-background pl-9 pr-4 text-sm font-medium text-foreground placeholder:text-muted-foreground transition-colors focus:border-foreground focus:outline-none"
+          <span className="sr-only">শিরোনাম, প্রতিষ্ঠান, শাখা, এলাকা বা নথি নম্বর</span>
+          <Input
+            className="h-10 w-full border-2 border-border bg-background pl-9 pr-4 text-sm font-medium text-foreground placeholder:text-muted-foreground"
             defaultValue={search ?? ""}
             name="search"
-            placeholder="প্রতিষ্ঠান, এলাকা বা নথি নম্বর খুঁজুন..."
+            placeholder="শিরোনাম, প্রতিষ্ঠান, শাখা বা নথি নম্বর খুঁজুন..."
             type="search"
           />
         </label>
@@ -31,6 +36,7 @@ export function ReportsToolbar({
 
       {/* Counter and Sort Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+        {filterControls}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground ">
           <FileText className="size-3.5 text-primary" />
           <span>মোট <strong className="text-foreground">{formatBnNumber(count)}</strong>টি নথি</span>
@@ -53,12 +59,13 @@ export function ReportsToolbar({
             </select>
           </div>
 
-          <button
+          <Button
+            size="sm"
             type="submit"
-            className="h-10 inline-flex items-center justify-center border-2 border-foreground bg-primary px-4 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none cursor-pointer"
+            className="h-10 border-2 border-foreground bg-primary px-4 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none"
           >
             ফিল্টার করুন
-          </button>
+          </Button>
         </div>
       </div>
     </div>

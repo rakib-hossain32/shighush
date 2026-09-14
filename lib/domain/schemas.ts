@@ -43,12 +43,22 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 export const reportSubmitSchema = z
   .object({
+    /** Reporter-written neutral headline describing the complaint. */
+    title: z
+      .string()
+      .trim()
+      .min(5, "অভিযোগের শিরোনাম অন্তত ৫ অক্ষরে লিখুন")
+      .max(200, "শিরোনামটি ২০০ অক্ষরের মধ্যে রাখুন"),
+
     /** Free text: the reporter may name an office that is not yet in our canonical list. */
     institutionName: z
       .string()
       .trim()
-      .min(3, "প্রতিষ্ঠান বা দফতরের নাম লিখুন")
-      .max(200, "নামটি অনেক বড় হয়ে গেছে"),
+      .max(200, "নামটি অনেক বড় হয়ে গেছে")
+      .default(""),
+
+    /** A reporter may not know the institution name; moderators can resolve it later. */
+    institutionNameUnknown: z.boolean().default(false),
 
     /** Set once a moderator links the free text to a canonical institution. */
     institutionSlug: z.string().trim().optional(),
@@ -57,12 +67,18 @@ export const reportSubmitSchema = z
       errorMap: () => ({ message: "অভিযোগের ধরন বেছে নিন" }),
     }),
 
-    area: z.enum(areaSlugs, {
-      errorMap: () => ({ message: "ঘটনার এলাকা বেছে নিন" }),
-    }),
+    area: z.union([z.enum(areaSlugs), z.literal("unknown")]).default("unknown"),
 
     /** Office or branch name, if narrower than the institution. Optional by design. */
-    officeName: z.string().trim().max(200).optional(),
+    officeName: z
+      .string()
+      .trim()
+      .max(200)
+      .refine(
+        (value) => !value || /[\u0980-\u09FF]/.test(value),
+        "শাখা / অফিসের নাম বাংলায় লিখুন",
+      )
+      .optional(),
 
     incidentDate: z
       .string()
@@ -121,6 +137,13 @@ export const reportSubmitSchema = z
       .optional(),
   })
   .superRefine((value, ctx) => {
+    if (!value.institutionNameUnknown && value.institutionName.length < 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["institutionName"],
+        message: "প্রতিষ্ঠানটির নাম লিখুন, অথবা ‘নাম জানা নেই’ নির্বাচন করুন",
+      });
+    }
     // An amount without a type, or a type without an amount, is ambiguous data.
     if (value.moneyAmount !== undefined && value.moneyType === "unknown") {
       ctx.addIssue({
@@ -196,6 +219,8 @@ export const moderationDecisionSchema = z
     /** Neutral public title/summary written by the moderator (§16.5). */
     publicTitle: z.string().trim().max(200).optional(),
     publicSummary: z.string().trim().max(1000).optional(),
+    publicNarrative: z.string().trim().max(20000).optional(),
+    expectedUpdatedAt: z.string().datetime().optional(),
     /** What was redacted and why — becomes part of the audit trail. */
     redactionNotes: z.string().trim().max(2000).optional(),
     /** Internal note, never public. */
@@ -203,6 +228,9 @@ export const moderationDecisionSchema = z
   })
   .superRefine((value, ctx) => {
     if (value.decision === "publish") {
+      for (const field of ["publicSummary", "publicNarrative", "redactionNotes"] as const) {
+        if (!value[field]) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: "প্রকাশের আগে এই তথ্য পূরণ করুন" });
+      }
       if (!value.verificationLevel) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -294,6 +322,8 @@ export const institutionFilterSchema = z.object({
 export const moderationQueueSchema = z.object({
   page,
   limit,
+  view: z.enum(["all", "active", "completed"]).optional().catch(undefined),
+  assignment: z.enum(["all", "mine", "unassigned"]).optional().catch(undefined),
   search: z.string().trim().max(120).optional().catch(undefined),
   status: multi(REPORT_STATUSES as unknown as [string, ...string[]]),
   category: multi(REPORT_CATEGORIES as unknown as [string, ...string[]]),

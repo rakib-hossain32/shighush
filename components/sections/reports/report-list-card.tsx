@@ -7,7 +7,6 @@ import {
   Coins,
   FileCheck2,
   MapPin,
-  ShieldCheck,
 } from "lucide-react";
 
 import { MetaBadge } from "@/components/ui/status-badge";
@@ -16,7 +15,12 @@ import {
   VERIFICATION_LEVEL_META,
 } from "@/lib/domain/enums";
 import { areaName } from "@/lib/domain/geo";
-import { formatBnDate, formatBnNumber, formatCaseId } from "@/lib/format";
+import { officeNameBn } from "@/lib/domain/office-name";
+import {
+  formatBnNumber,
+  formatBnPublishedAge,
+  formatCaseId,
+} from "@/lib/format";
 import type { PublicReport } from "@/services/_shared/types";
 
 export function ReportListCard({ report }: { report: PublicReport }) {
@@ -34,17 +38,29 @@ export function ReportListCard({ report }: { report: PublicReport }) {
 
   const hasEvidence = Boolean(report.evidence && report.evidence.length > 0);
   const moneyAmount = report.money?.amount;
-  const institutionName = report.institution?.nameBn || "শিবচর প্রশাসনিক দপ্তর";
-  const displayTitle = report.title || `${institutionName}-এ অনিয়মের অভিযোগ`;
+  const institutionName =
+    report.institution?.nameBn ||
+    report.institutionName ||
+    "প্রতিষ্ঠানের নাম জানা নেই";
+  const institutionUnknown =
+    report.institutionNameUnknown ||
+    institutionName === "অজানা প্রতিষ্ঠান" ||
+    institutionName === "প্রতিষ্ঠানের নাম জানা নেই";
+  const areaLabel =
+    report.location?.area && report.location.area !== "unknown"
+      ? areaName(report.location.area)
+      : "এলাকা উল্লেখ নেই";
+  const displayTitle = report.title || "শিরোনাম উল্লেখ করা হয়নি";
+  const officeName = officeNameBn(report.location?.officeName);
   const targetHref = `/reports/${report.slug || report.publicId || report.id}`;
 
   return (
-    <article className="group relative mb-4 border-2 border-border bg-card p-5 transition-all duration-200 hover:border-foreground hover:shadow-[4px_4px_0_var(--foreground)] hover:-translate-y-0.5">
+    <article className="group relative border-2 border-border bg-card p-5 transition-all duration-200 hover:border-foreground hover:shadow-[4px_4px_0_var(--foreground)] hover:-translate-y-0.5">
       {/* Top Meta Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/60 pb-3">
         {/* Left: Case ID & Category */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center border-2 border-primary/40 bg-primary/10 px-2.5 py-0.5 font-mono text-xs font-bold tracking-wider text-primary">
+          <span className="inline-flex items-center border-2 border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs font-bold tracking-wider text-primary">
             {formatCaseId(report.publicId)}
           </span>
 
@@ -70,19 +86,19 @@ export function ReportListCard({ report }: { report: PublicReport }) {
           {report.publishedAt && (
             <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
               <Calendar className="size-3" />
-              <span>{formatBnDate(report.publishedAt)}</span>
+              <span>প্রকাশিত {formatBnPublishedAge(report.publishedAt)}</span>
             </span>
           )}
         </div>
       </div>
 
       {/* Main Content Body */}
-      <div className="pt-3.5 pb-2">
+      <div className="border-l-4 border-primary pl-3.5 pt-3.5 pb-2 sm:pl-4">
         <Link
           className="block group-hover:text-primary transition-colors focus:outline-none"
           href={targetHref}
         >
-          <h3 className="font-heading text-base font-bold text-foreground transition-colors group-hover:text-primary sm:text-lg leading-snug">
+          <h3 className="font-heading text-lg font-extrabold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-xl">
             {displayTitle}
           </h3>
         </Link>
@@ -97,21 +113,42 @@ export function ReportListCard({ report }: { report: PublicReport }) {
       {/* Bottom Metadata & Action Footer */}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3">
         {/* Info Tags */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5 font-medium text-foreground/90">
+        <div className="grid min-w-0 flex-1 gap-x-5 gap-y-2 text-xs text-muted-foreground sm:grid-cols-2">
+          <span className="inline-flex min-w-0 items-start gap-1.5 font-medium text-foreground/90">
             <Building2 className="size-3.5 text-primary shrink-0" />
-            <span>{institutionName}</span>
+            <span className="min-w-0">
+              <span className="block truncate">
+                {institutionUnknown
+                  ? "প্রতিষ্ঠানের নাম জানা নেই"
+                  : institutionName}
+              </span>
+              {officeName ? (
+                <span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground">
+                  শাখা / অফিস: {officeName}
+                </span>
+              ) : null}
+            </span>
           </span>
 
-          <span className="inline-flex items-center gap-1">
+          <span className="inline-flex items-start gap-1.5">
             <MapPin className="size-3.5 text-muted-foreground shrink-0" />
-            <span>{areaName(report.location?.area)}</span>
+            <span>
+              <span className="block">{areaLabel}</span>
+              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                ঘটনার প্রশাসনিক এলাকা
+              </span>
+            </span>
           </span>
 
-          {moneyAmount ? (
-            <span className="inline-flex items-center gap-1 font-semibold text-destructive">
+          {moneyAmount !== undefined && moneyAmount !== null ? (
+            <span className="inline-flex items-center gap-1 font-semibold text-destructive sm:col-span-2">
               <Coins className="size-3.5 shrink-0" />
-              <span>দাবিকৃত অর্থ: ৳{formatBnNumber(moneyAmount)}</span>
+              <span>
+                {report.money?.type === "paid"
+                  ? "পরিশোধিত অর্থ"
+                  : "দাবিকৃত অর্থ"}
+                : ৳{formatBnNumber(moneyAmount)}
+              </span>
             </span>
           ) : null}
         </div>

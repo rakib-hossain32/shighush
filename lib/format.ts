@@ -135,6 +135,30 @@ export function formatBnRelative(
 }
 
 /**
+ * Publication age for archive cards: use minutes/hours for the first 48 hours,
+ * then switch to the stable Bengali calendar date.
+ */
+export function formatBnPublishedAge(
+  iso: string | Date | null | undefined,
+  now: Date = new Date(),
+): string {
+  const date = toDate(iso);
+  if (!date) return "—";
+
+  const diffMs = now.getTime() - date.getTime();
+  if (diffMs < 0 || diffMs >= 48 * 60 * 60 * 1000) {
+    return formatBnDate(date);
+  }
+
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return "এইমাত্র";
+  if (minutes < 60) return `${toBnDigits(minutes)} মিনিট আগে`;
+
+  const hours = Math.floor(minutes / 60);
+  return `${toBnDigits(hours)} ঘণ্টা আগে`;
+}
+
+/**
  * Human-facing case reference: `শি-০০৪২`.
  * The API owns the numeric `publicId`; this only decorates it, so a change of prefix
  * never has to touch stored data.

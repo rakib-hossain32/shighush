@@ -24,8 +24,8 @@ import {
   type DatePrecision,
   type MoneyType,
 } from "@/lib/domain/enums";
-import { AREAS } from "@/lib/domain/geo";
 import { cn } from "@/lib/utils";
+import { officeNameBn } from "@/lib/domain/office-name";
 
 import { FieldError } from "./field";
 import { useReportForm } from "./form-context";
@@ -99,10 +99,10 @@ export function StepReview() {
     formState: { errors },
   } = form;
 
+  const title = watch("title");
   const institutionName = watch("institutionName");
-  const officeName = watch("officeName");
-  const areaSlug = watch("area");
-  const areaObj = AREAS.find((a) => a.slug === areaSlug);
+  const institutionNameUnknown = watch("institutionNameUnknown");
+  const officeName = officeNameBn(watch("officeName"));
   const incidentDate = watch("incidentDate");
   const incidentDatePrecision = watch("incidentDatePrecision") as
     | DatePrecision
@@ -149,7 +149,12 @@ export function StepReview() {
 
         <div className="space-y-5">
           <SummaryGroup step={0} title="ঘটনার প্রেক্ষাপট">
-            <SummaryRow label="প্রতিষ্ঠান" value={institutionName || "—"} />
+            <SummaryRow label="অভিযোগের শিরোনাম" value={title || NOT_PROVIDED} />
+            <SummaryRow
+              label="প্রতিষ্ঠান"
+              muted={!institutionName && !institutionNameUnknown}
+              value={institutionNameUnknown ? "নাম জানা নেই" : institutionName || NOT_PROVIDED}
+            />
             <SummaryRow
               label="অভিযোগের ধরন"
               value={
@@ -158,7 +163,6 @@ export function StepReview() {
                   : "—"
               }
             />
-            <SummaryRow label="এলাকা" value={areaObj?.nameBn || "—"} />
             <SummaryRow
               label="শাখা / অফিস"
               muted={!officeName}

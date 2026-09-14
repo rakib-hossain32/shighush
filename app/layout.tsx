@@ -49,7 +49,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="bn" className={`${bangla.variable} ${manrope.variable} ${ibmPlexMono.variable}`}>
-      <body className="overflow-x-hidden">
+      <body className="overflow-x-hidden font-sans">
         <IconSprite />
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
