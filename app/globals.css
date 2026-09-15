@@ -883,3 +883,29 @@ select:focus-visible,
   font-family: var(--font-bangla), sans-serif !important;
 }
 
+/* Custom sleek neo-brutalist modal scrollbar */
+.custom-modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 35%, transparent) transparent;
+}
+.custom-modal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 35%, transparent);
+  border-radius: 0px;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground);
+}
+.custom-modal-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+

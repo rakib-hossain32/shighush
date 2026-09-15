@@ -25,6 +25,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch all published reports and institutions
   const reportsResponse = await getReports({ limit: 1000 });
   const institutionsResponse = await getInstitutions({ limit: 1000 });
+  const reports = Array.isArray(reportsResponse.data)
+    ? reportsResponse.data
+    : [];
+  const institutions = Array.isArray(institutionsResponse.data)
+    ? institutionsResponse.data
+    : [];
 
   return [
     ...staticRoutes.map((path) => ({
@@ -33,13 +39,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: path === "/" ? 1 : 0.8,
     })),
-    ...reportsResponse.data.map((report) => ({
+    ...reports.map((report) => ({
       url: url(`/reports/${report.slug}`),
       lastModified,
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
-    ...institutionsResponse.data.map((institution) => ({
+    ...institutions.map((institution) => ({
       url: url(`/institutions/${institution.slug}`),
       lastModified,
       changeFrequency: "weekly" as const,

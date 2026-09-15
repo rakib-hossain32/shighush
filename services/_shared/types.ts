@@ -69,7 +69,10 @@ export type PaginationMeta = {
 };
 
 export type ApiListResponse<T> = { data: T[]; meta: PaginationMeta };
-export type ApiSuccessResponse<T> = { data: T };
+export type ApiSuccessResponse<T> = {
+  message: string;
+  data: T;
+};
 
 /** Location, capped at union granularity — see the §12 note in `lib/domain/geo.ts`. */
 export type ApiLocation = {
@@ -263,6 +266,16 @@ export type Statistics = {
   byCategory: Array<{ category: ReportCategory; count: number }>;
   byVerification: Array<{ level: VerificationLevel; count: number }>;
   byArea: Array<{ area: string; count: number; topCategory?: ReportCategory }>;
+  byInstitution?: Array<{ name: string; count: number; totalAmount?: number }>;
+  byAccused?: Array<{
+    name: string;
+    designation: string;
+    institution?: string;
+    count: number;
+    totalAmount?: number;
+    category?: string;
+  }>;
+  byService?: Array<{ service: string; count: number; totalAmount?: number }>;
   trend: Array<{ period: string; count: number }>;
   generatedAt: string;
   /** Echoed back so a chart can state the window it is describing. */
@@ -331,13 +344,19 @@ export type ModerationReport = PublicReport & {
 
 export type Appeal = {
   id: string;
+  reportId?: string;
   caseId: string;
   reportSlug?: string;
+  reportTitle?: string;
+  reportCategory?: string;
+  institutionName?: string;
   reason: AppealReason;
   detail: string;
   status: AppealStatus;
   receivedAt: string;
   resolvedAt?: string;
+  contactEmail?: string;
+  resolution?: string;
 };
 
 export type Flag = {

@@ -132,7 +132,7 @@ export function CaseStatusTimeline({ report }: { report: CaseTrackResult }) {
                 <span className="font-mono text-xs font-bold uppercase tracking-wider text-primary">
                   CASE PROGRESS TRACKER
                 </span>
-                <Badge variant="outline" className="font-mono text-[10px]">
+                <Badge variant="outline" className=" text-[10px]">
                   ID: {report.caseId}
                 </Badge>
                 <Badge variant="secondary" className="text-[10px]">

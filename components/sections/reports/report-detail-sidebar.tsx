@@ -20,7 +20,7 @@ export function ReportDetailSidebar({ report }: { report: PublicReport }) {
   return (
     <aside className="grid h-fit gap-5">
       <section className="border-2 border-foreground bg-background p-5">
-        <p className="mono text-[11px] font-bold tracking-[.15em] text-primary">নথি তথ্য</p>
+        <p className=" text-[11px] font-bold tracking-[.15em] text-primary">নথি তথ্য</p>
 
         <dl className="mt-5 divide-y divide-border">
           <DataRow icon={<BadgeCheck />} label="যাচাইয়ের স্তর">

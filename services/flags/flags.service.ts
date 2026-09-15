@@ -1,6 +1,10 @@
 import "server-only";
 import { apiRequest } from "@/services/_shared/server-api-client";
-import type { ApiListResponse, ApiSuccessResponse, Flag } from "@/services/_shared/types";
+import type {
+  ApiListResponse,
+  ApiSuccessResponse,
+  Flag,
+} from "@/services/_shared/types";
 
 /**
  * Flag List Params
@@ -20,6 +24,7 @@ export function getFlags(params: FlagListParams = {}) {
     query: params,
     tags: ["flags"],
     revalidate: 30,
+    includeSession: true,
   });
 }
 
@@ -30,6 +35,7 @@ export function getFlagById(id: string) {
   return apiRequest<ApiSuccessResponse<Flag>>(`flags/${id}`, {
     tags: ["flags", `flag:${id}`],
     revalidate: 30,
+    includeSession: true,
   });
 }
 
@@ -47,10 +53,14 @@ export function submitFlag<TPayload, TResult>(payload: TPayload) {
 /**
  * Update flag status (Admin/Moderator only)
  */
-export function updateFlagStatus<TPayload, TResult>(flagId: string, payload: TPayload) {
+export function updateFlagStatus<TPayload, TResult>(
+  flagId: string,
+  payload: TPayload,
+) {
   return apiRequest<ApiSuccessResponse<TResult>>(`flags/${flagId}/status`, {
     method: "PATCH",
     body: payload,
     revalidate: false,
+    includeSession: true,
   });
 }

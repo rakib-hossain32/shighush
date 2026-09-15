@@ -1,6 +1,10 @@
 import "server-only";
 import { apiRequest } from "@/services/_shared/server-api-client";
-import type { ApiListResponse, ApiSuccessResponse, PublicPerson } from "@/services/_shared/types";
+import type {
+  ApiListResponse,
+  ApiSuccessResponse,
+  PublicPerson,
+} from "@/services/_shared/types";
 
 /**
  * People List Params
@@ -27,10 +31,13 @@ export function getPeople(params: PeopleListParams = {}) {
  * Get person by slug
  */
 export function getPersonBySlug(slug: string) {
-  return apiRequest<ApiSuccessResponse<PublicPerson>>(`people/${encodeURIComponent(slug)}`, {
-    tags: ["people", `person:${slug}`],
-    revalidate: 60,
-  });
+  return apiRequest<ApiSuccessResponse<PublicPerson>>(
+    `people/${encodeURIComponent(slug)}`,
+    {
+      tags: ["people", `person:${slug}`],
+      revalidate: 60,
+    },
+  );
 }
 
 /**
@@ -41,6 +48,7 @@ export function createPerson<TPayload, TResult>(payload: TPayload) {
     method: "POST",
     body: payload,
     revalidate: false,
+    includeSession: true,
   });
 }
 
@@ -49,11 +57,15 @@ export function createPerson<TPayload, TResult>(payload: TPayload) {
  */
 export function updatePersonVisibility<TPayload, TResult>(
   personId: string,
-  payload: TPayload
+  payload: TPayload,
 ) {
-  return apiRequest<ApiSuccessResponse<TResult>>(`people/${personId}/visibility`, {
-    method: "PATCH",
-    body: payload,
-    revalidate: false,
-  });
+  return apiRequest<ApiSuccessResponse<TResult>>(
+    `people/${personId}/visibility`,
+    {
+      method: "PATCH",
+      body: payload,
+      revalidate: false,
+      includeSession: true,
+    },
+  );
 }

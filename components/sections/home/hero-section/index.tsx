@@ -169,8 +169,8 @@ function EvidenceBoard() {
           নমুনা নথির ইন্টারঅ্যাকটিভ প্রমাণ বোর্ড
         </figcaption>
         <div className="absolute inset-0">
-          <div className="absolute left-[7%] right-[2%] top-[1%] flex justify-between font-mono text-[9px] tracking-[.1em] text-muted-foreground">
-            <span>THE CIVIC EVIDENCE BOARD</span>
+          <div className="absolute left-[7%] right-[2%] top-[1%] flex justify-between  text-[9px] tracking-[.1em] text-muted-foreground">
+            <span className="font-mono">THE CIVIC EVIDENCE BOARD</span>
             <span className="inline-flex items-center gap-2 font-sans tracking-normal">
               <i className="size-2 rounded-full bg-primary" />
               নমুনা নথি

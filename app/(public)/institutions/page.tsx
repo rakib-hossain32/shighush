@@ -73,7 +73,7 @@ export default async function InstitutionsPage({ searchParams }: InstitutionsPag
                 প্রকাশিত রিপোর্টের সংখ্যা অনুযায়ী সাজানো; এটি কোনো অপরাধের চূড়ান্ত পরিমাপ নয়।
               </p>
             </div>
-            <p className="mono text-[11px] font-bold tracking-[.13em] text-primary">
+            <p className=" text-[11px] font-bold tracking-[.13em] text-primary">
               {formatBnCount(institutions.length)} দেখানো হচ্ছে
             </p>
           </div>

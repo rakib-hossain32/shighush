@@ -1,220 +1,171 @@
-import Link from "next/link";
-import { AlertTriangleIcon, ArrowRightIcon, InboxIcon } from "lucide-react";
-
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { AdminStatCards } from "@/components/admin/admin-stat-cards";
-import { CellStack, DataTable, type Column } from "@/components/admin/data-table";
-import { Button } from "@/components/ui/button";
-import { MetaBadge, StatusBadge } from "@/components/ui/status-badge";
 import { requireSession } from "@/lib/auth/dal";
 import { can } from "@/lib/auth/permissions";
-import { REPORT_CATEGORY_META, REPORT_STATUS_META } from "@/lib/domain/enums";
-import { areaName } from "@/lib/domain/geo";
-import { formatBnRelative, formatCaseId } from "@/lib/format";
-import { getDashboardStats, getModerationQueue, type ModerationReport, type OverviewMetric } from "@/services";
 import { createPageMetadata } from "@/lib/seo";
+import {
+  getAuditLogs,
+  getDashboardStats,
+  getModerationQueue,
+  getStatistics,
+  getUsers,
+  type AuditLogEntry,
+  type ModerationReport,
+  type StaffUser,
+} from "@/services";
+
+import { OverviewHeader } from "@/components/admin/overview/overview-header";
+import { OverviewStatCards, type DashboardStatsData } from "@/components/admin/overview/overview-stat-cards";
+import { OverviewQuickTools } from "@/components/admin/overview/overview-quick-tools";
+import { OverviewQueueSection } from "@/components/admin/overview/overview-queue-section";
+import { OverviewCategoryDistribution } from "@/components/admin/overview/overview-category-distribution";
+import { OverviewInsightsCharts } from "@/components/admin/overview/overview-insights-charts";
+import { OverviewTeamAndAudit } from "@/components/admin/overview/overview-team-and-audit";
 
 export const metadata = createPageMetadata({
-  title: "সারসংক্ষেপ",
-  description: "মডারেশন কিউ ও প্ল্যাটফর্মের অবস্থা।",
+  title: "সারসংক্ষেপ ও কন্ট্রোল প্যানেল",
+  description: "মডারেশন কিউ, প্ল্যাটফর্মের অবস্থা ও সার্বিক কন্ট্রোল প্যানেল।",
   index: false,
 });
 
 export default async function AdminOverviewPage() {
   const session = await requireSession("/admin");
-  
-  const statsResponse = await getDashboardStats();
-  const rawMetrics = statsResponse.data.metrics;
-  
-  // Safely handle piiAlerts - ensure it's an array
-  const piiAlertsData = statsResponse.data.piiAlerts;
-  const piiAlertsArray = Array.isArray(piiAlertsData) ? piiAlertsData : [];
-  const piiAlertsCount = piiAlertsArray.length;
 
-  // Debug: Log first item structure if available
-  if (piiAlertsArray.length > 0 && process.env.NODE_ENV === 'development') {
-    console.log('[DEBUG] First PII Alert:', JSON.stringify(piiAlertsArray[0], null, 2));
-  }
+  const canManageUsers = can(session.role, "user:read");
+  const canViewAudit = can(session.role, "audit:read");
 
-  // Transform DashboardMetric[] to OverviewMetric[]
-  const metrics: OverviewMetric[] = rawMetrics.map((metric) => ({
-    ...metric,
-    delta: null, // No historical data available yet
-    lowerIsBetter: metric.key === "pending" || metric.key === "pii_alerts",
-    footnote: "গত ৩০ দিন",
-    href: 
-      metric.key === "pending" 
-        ? "/admin/reports?status=submitted,under_review"
-        : metric.key === "pii_alerts"
-        ? "/admin/reports?hasPii=true"
-        : undefined,
-  }));
+  // Fetch all dashboard data concurrently with safe fallbacks
+  const [
+    statsRes,
+    platformStatsRes,
+    queueRes,
+    myQueueRes,
+    publishedRes,
+    usersRes,
+    auditRes,
+  ] = await Promise.allSettled([
+    getDashboardStats(),
+    getStatistics({ scope: "all" }),
+    getModerationQueue({
+      limit: 6,
+      status: ["submitted", "under_review", "needs_info"],
+    }),
+    getModerationQueue({
+      limit: 6,
+      assignment: "mine",
+    }),
+    getModerationQueue({
+      limit: 4,
+      status: ["published"],
+    }),
+    canManageUsers ? getUsers({ role: "Moderator" }) : Promise.resolve(null),
+    canViewAudit ? getAuditLogs({ limit: 6 }) : Promise.resolve(null),
+  ]);
 
-  const queueResponse = await getModerationQueue({
-    limit: 5,
-    status: ["submitted", "under_review"],
-  });
-  // Safely handle queue response - ensure data is an array
-  const awaitingReview = Array.isArray(queueResponse.data) ? queueResponse.data : [];
+  // Safe data unpackers
+  const statsData = statsRes.status === "fulfilled" && statsRes.value?.data ? statsRes.value.data : null;
+  const platformStats = platformStatsRes.status === "fulfilled" && platformStatsRes.value?.data ? platformStatsRes.value.data : null;
 
-  // Debug: Log first item structure if available
-  if (awaitingReview.length > 0 && process.env.NODE_ENV === 'development') {
-    console.log('[DEBUG] First Queue Item:', JSON.stringify(awaitingReview[0], null, 2));
-  }
+  const rawMetrics = statsData?.metrics || [];
+  const totalCount = rawMetrics.find((m) => m.key === "total")?.value ?? 0;
+  const queueCount = rawMetrics.find((m) => m.key === "queue" || m.key === "pending")?.value ?? 0;
+  const publishedCount = rawMetrics.find((m) => m.key === "published")?.value ?? 0;
+  const todayCount = rawMetrics.find((m) => m.key === "today")?.value ?? 0;
 
-  // Use PII alerts from dashboard stats (already contains reports with PII findings)
-  const piiAlerts = piiAlertsArray.slice(0, 10);
+  // PII alerts
+  const piiAlertsArray: ModerationReport[] =
+    statsData?.piiAlerts && Array.isArray(statsData.piiAlerts)
+      ? statsData.piiAlerts
+      : [];
 
-  const mayReview = can(session.role, "report:review");
+  // Queues
+  const awaitingReview: ModerationReport[] =
+    queueRes.status === "fulfilled" && Array.isArray(queueRes.value?.data)
+      ? queueRes.value.data
+      : [];
 
-  const queueColumns: Array<Column<ModerationReport>> = [
-    {
-      key: "case",
-      header: "নথি",
-      primary: true,
-      cell: (report) => {
-        const institutionName = report.institution?.nameBn || report.institutionName || 'অজানা প্রতিষ্ঠান';
-        const area = report.location?.area || '';
-        const subtitle = area ? `${institutionName} · ${areaName(area)}` : institutionName;
-        
-        return (
-          <CellStack
-            subtitle={subtitle}
-            title={report.title || formatCaseId(report.publicId)}
-          />
-        );
-      },
-    },
-    {
-      key: "category",
-      header: "ধরন",
-      hideBelow: "md",
-      cell: (report) => {
-        const categoryMeta = REPORT_CATEGORY_META[report.category];
-        return categoryMeta ? (
-          <MetaBadge meta={categoryMeta} short size="sm" />
-        ) : (
-          <span className="text-xs text-muted-foreground">{report.category}</span>
-        );
-      },
-    },
-    {
-      key: "pii",
-      header: "গোপনীয়তা",
-      hideBelow: "lg",
-      cell: (report) => {
-        const piiCount = report.piiFindings?.length || 0;
-        return piiCount > 0 ? (
-          <StatusBadge icon={<AlertTriangleIcon />} size="sm" tone="danger">
-            {piiCount}টি সতর্কতা
-          </StatusBadge>
-        ) : (
-          <span className="text-xs text-muted-foreground">পরিষ্কার</span>
-        );
-      },
-    },
-    {
-      key: "age",
-      header: "জমা",
-      align: "end",
-      hideBelow: "sm",
-      cell: (report) => (
-        <span className="text-xs text-muted-foreground">
-          {formatBnRelative(report.submittedAt)}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: "অবস্থা",
-      align: "end",
-      cell: (report) => {
-        const statusMeta = REPORT_STATUS_META[report.status];
-        return statusMeta ? (
-          <MetaBadge meta={statusMeta} short size="sm" />
-        ) : (
-          <span className="text-xs text-muted-foreground">{report.status}</span>
-        );
-      },
-    },
-  ];
+  const myAssigned: ModerationReport[] =
+    myQueueRes.status === "fulfilled" && Array.isArray(myQueueRes.value?.data)
+      ? myQueueRes.value.data
+      : [];
+
+  const recentlyPublished: ModerationReport[] =
+    publishedRes.status === "fulfilled" && Array.isArray(publishedRes.value?.data)
+      ? publishedRes.value.data
+      : [];
+
+  // Staff & Audits
+  const moderators: StaffUser[] =
+    usersRes.status === "fulfilled" && Array.isArray(usersRes.value?.data)
+      ? usersRes.value.data
+      : [];
+
+  const auditLogs: AuditLogEntry[] =
+    auditRes.status === "fulfilled" && Array.isArray(auditRes.value?.data)
+      ? auditRes.value.data
+      : [];
+
+  // Prepared stat cards data
+  const statCardsData: DashboardStatsData = {
+    totalReports: totalCount,
+    awaitingReview: queueCount,
+    publishedReports: publishedCount,
+    todayReports: todayCount,
+    piiAlertsCount: piiAlertsArray.length,
+    reportedAmountBdt: platformStats?.totals?.reportedAmountBdt,
+  };
+
+  const byCategory = platformStats?.byCategory || [];
+  const byVerification = platformStats?.byVerification || [];
+  const byArea = platformStats?.byArea || [];
+  const byInstitution = platformStats?.byInstitution || [];
+  const byAccused = platformStats?.byAccused || [];
+  const byService = platformStats?.byService || [];
 
   return (
-    <>
-      <AdminPageHeader
-        actions={
-          mayReview && (
-            <Button
-              nativeButton={false}
-              render={
-                <Link href="/admin/reports?status=submitted,under_review,needs_info" />
-              }
-            >
-              <InboxIcon />
-              রিভিউ কিউ খুলুন
-            </Button>
-          )
-        }
-        description="কিউয়ের অবস্থা, গোপনীয়তা সতর্কতা এবং সাম্প্রতিক কার্যক্রম এক জায়গায়।"
-        title="সারসংক্ষেপ"
+    <div className="space-y-8">
+      {/* 1. Hero & Welcome Header */}
+      <OverviewHeader session={session} />
+
+      {/* 2. KPI Metrics Grid */}
+      <OverviewStatCards stats={statCardsData} />
+
+      {/* 3. Command Center Quick Tools */}
+      <OverviewQuickTools
+        canManageUsers={canManageUsers}
+        canViewAudit={canViewAudit}
       />
 
-      <AdminStatCards metrics={metrics} />
+      {/* 4. Tabbed Moderation Queue Section */}
+      <OverviewQueueSection
+        currentUserId={session.userId}
+        myAssignedReports={myAssigned}
+        awaitingReviewReports={awaitingReview}
+        piiAlertReports={piiAlertsArray}
+        recentlyPublishedReports={recentlyPublished}
+      />
 
-      {mayReview && (
-        <>
-          <section className="grid gap-3">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold">রিভিউয়ের অপেক্ষায়</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  সবচেয়ে নতুন পাঁচটি। প্রকাশের আগে ব্যক্তিগত তথ্য সরানো বাধ্যতামূলক।
-                </p>
-              </div>
-              <Link
-                className="inline-flex shrink-0 items-center gap-1 text-sm font-bold underline"
-                href="/admin/reports?status=submitted,under_review,needs_info"
-              >
-                সব দেখুন <ArrowRightIcon className="size-4" />
-              </Link>
-            </div>
+      {/* 5. Distribution & Integrity Breakdown */}
+      <OverviewCategoryDistribution
+        byCategory={byCategory}
+        byVerification={byVerification}
+        totalReports={totalCount}
+      />
 
-            <DataTable
-              columns={queueColumns}
-              empty={{
-                title: "কিউ খালি",
-                description: "এই মুহূর্তে কোনো নথি রিভিউয়ের অপেক্ষায় নেই।",
-              }}
-              rowHref={(report) => `/admin/reports/${report.id}`}
-              rowKey={(report) => report.id}
-              rows={awaitingReview}
-            />
-          </section>
+      {/* 6. Deep Insights — Area / Institution / Accused / Service */}
+      <OverviewInsightsCharts
+        byArea={byArea}
+        byInstitution={byInstitution}
+        byAccused={byAccused}
+        byService={byService}
+        totalReports={totalCount}
+      />
 
-          {piiAlerts.length > 0 && (
-            <section className="grid gap-3">
-              <div className="flex items-start gap-3 border-l-4 border-destructive bg-destructive/5 p-4">
-                <AlertTriangleIcon className="mt-0.5 size-5 shrink-0 text-destructive" />
-                <div>
-                  <h2 className="font-bold">গোপনীয়তা সতর্কতা</h2>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    এই নথিগুলোর জমা দেওয়া বিবরণে মোবাইল নম্বর, NID বা অন্য শনাক্তকারী তথ্য
-                    পাওয়া গেছে। স্বয়ংক্রিয় সরানো হয় না — মডারেটরকেই সিদ্ধান্ত নিতে হবে।
-                  </p>
-                </div>
-              </div>
-
-              <DataTable
-                columns={queueColumns}
-                empty={{ title: "কোনো সতর্কতা নেই" }}
-                rowHref={(report) => `/admin/reports/${report.id}`}
-                rowKey={(report) => report.id}
-                rows={piiAlerts}
-              />
-            </section>
-          )}
-        </>
-      )}
-    </>
+      {/* 7. Moderator Team Roster & Audit Stream */}
+      <OverviewTeamAndAudit
+        canManageUsers={canManageUsers}
+        canViewAudit={canViewAudit}
+        moderators={moderators}
+        auditLogs={auditLogs}
+      />
+    </div>
   );
 }

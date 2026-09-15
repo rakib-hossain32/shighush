@@ -26,7 +26,7 @@ export function Pagination({
   // Safety: handle undefined or invalid meta
   const safeMeta = meta || { page: 1, limit: 20, total: 0, totalPages: 1 };
   const { page = 1, totalPages = 1, total = 0 } = safeMeta;
-  
+
   if (totalPages <= 1 && !showSinglePage) return null;
 
   const href = (page: number) => {
@@ -63,17 +63,17 @@ export function Pagination({
       <div className="flex items-center gap-1.5">
         {page > 1 ? (
           <Link
-            className="inline-flex items-center gap-1 border border-foreground px-3 py-2 font-bold"
+            className="inline-flex items-center gap-1 border-2 border-foreground bg-background px-3 py-1.5 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all cursor-pointer"
             href={href(page - 1)}
             rel="prev"
           >
-            <ChevronLeft className="size-4" />
-            আগের
+            <ChevronLeft className="size-3.5" />
+            আগের পাতা
           </Link>
         ) : (
-          <span className="inline-flex items-center gap-1 border border-border px-3 py-2 font-bold text-muted-foreground">
-            <ChevronLeft className="size-4" />
-            আগের
+          <span className="inline-flex items-center gap-1 border-2 border-border bg-muted/30 px-3 py-1.5 text-xs font-bold text-muted-foreground cursor-not-allowed">
+            <ChevronLeft className="size-3.5" />
+            আগের পাতা
           </span>
         )}
 
@@ -81,14 +81,14 @@ export function Pagination({
           value === page ? (
             <span
               aria-current="page"
-              className="min-w-9 border border-foreground bg-foreground px-3 py-2 text-center font-bold text-background"
+              className="min-w-9 border-2 border-foreground bg-primary px-3 py-1.5 text-center text-xs font-black text-foreground shadow-[2px_2px_0_var(--foreground)]"
               key={value}
             >
               {formatBnNumber(value)}
             </span>
           ) : (
             <Link
-              className="min-w-9 border border-border px-3 py-2 text-center font-bold hover:border-foreground"
+              className="min-w-9 border-2 border-border bg-background px-3 py-1.5 text-center text-xs font-bold text-foreground hover:border-foreground hover:shadow-[2px_2px_0_var(--foreground)] transition-all cursor-pointer"
               href={href(value)}
               key={value}
             >
@@ -99,17 +99,17 @@ export function Pagination({
 
         {page < totalPages ? (
           <Link
-            className="inline-flex items-center gap-1 border border-foreground px-3 py-2 font-bold"
+            className="inline-flex items-center gap-1 border-2 border-foreground bg-background px-3 py-1.5 text-xs font-bold text-foreground shadow-[2px_2px_0_var(--foreground)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all cursor-pointer"
             href={href(page + 1)}
             rel="next"
           >
-            পরের
-            <ChevronRight className="size-4" />
+            পরের পাতা
+            <ChevronRight className="size-3.5" />
           </Link>
         ) : (
-          <span className="inline-flex items-center gap-1 border border-border px-3 py-2 font-bold text-muted-foreground">
-            পরের
-            <ChevronRight className="size-4" />
+          <span className="inline-flex items-center gap-1 border-2 border-border bg-muted/30 px-3 py-1.5 text-xs font-bold text-muted-foreground cursor-not-allowed">
+            পরের পাতা
+            <ChevronRight className="size-3.5" />
           </span>
         )}
       </div>

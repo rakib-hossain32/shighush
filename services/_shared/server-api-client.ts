@@ -10,6 +10,7 @@ type ApiRequestOptions = Omit<RequestInit, "body" | "headers" | "method"> & {
   revalidate?: number | false;
   tags?: string[];
   timeoutMs?: number;
+  includeSession?: boolean;
 };
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -55,17 +56,21 @@ export async function apiRequest<T>(
     revalidate = 60,
     tags,
     timeoutMs = DEFAULT_TIMEOUT_MS,
+    includeSession = false,
     method = "GET",
     ...init
   } = options;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const isJsonBody = body !== undefined && !(body instanceof FormData);
-  
-  // Read session token from cookies for authenticated requests
-  const { readSessionToken } = await import("@/lib/auth/session");
-  const token = await readSessionToken();
-  
+
+  const token = includeSession
+    ? await (async () => {
+        const { readSessionToken } = await import("@/lib/auth/session");
+        return readSessionToken();
+      })()
+    : undefined;
+
   try {
     const response = await fetch(createUrl(path, query), {
       ...init,

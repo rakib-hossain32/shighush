@@ -1,7 +1,6 @@
 import { CategoryOverviewSection } from "@/components/sections/home/category-overview-section";
 import { ComparisonPreviewSection } from "@/components/sections/home/comparison-preview-section";
 import { FinalCtaSection } from "@/components/sections/home/final-cta-section";
-// import { HeroSection } from "@/components/sections/home/hero-section";
 import { InstitutionPreviewSection } from "@/components/sections/home/institution-preview-section";
 import { LocationSection } from "@/components/sections/home/location-section";
 import { FaqSection } from "@/components/sections/home/faq-section";
@@ -12,6 +11,8 @@ import { VerificationSection } from "@/components/sections/home/verification-sec
 import { createPageMetadata } from "@/lib/seo";
 import { StatisticsSection } from "@/components/sections/home/statistics-section";
 import HeroSection from "@/components/sections/home/hero-section";
+import { getReports } from "@/services";
+import type { PublicReport } from "@/services/_shared/types";
 
 export const metadata = createPageMetadata({
   title: "শিবচরের নাগরিক নথি",
@@ -21,9 +22,21 @@ export const metadata = createPageMetadata({
 });
 
 export default async function HomePage() {
+  let reports: PublicReport[] = [];
+  try {
+    const response = await getReports({ limit: 50 });
+    if (response?.data && response.data.length > 0) {
+      reports = response.data;
+    }
+  } catch (error) {
+    console.error("Failed to fetch reports for homepage:", error);
+  }
+
+  const latestReport = reports.length > 0 ? reports[0] : null;
+
   return (
     <div className="overflow-hidden">
-      <HeroSection />
+      <HeroSection latestReport={latestReport} reports={reports} />
       <StatisticsSection />
       <PlatformIntroSection />
       <RecentReportsSection />
@@ -38,3 +51,4 @@ export default async function HomePage() {
     </div>
   );
 }
+

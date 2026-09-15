@@ -5,15 +5,66 @@ import Link from "next/link";
 import { SearchDialog } from "./hero-dialogs/search-dialog";
 import { DetailDialog } from "./hero-dialogs/detail-dialog";
 import { InfoDialog, type ExhibitData } from "./hero-dialogs/info-dialog";
+import type { PublicReport } from "@/services/_shared/types";
+import { formatCaseId, toBnDigits } from "@/lib/format";
+import { areaName } from "@/lib/domain/geo";
 
-export default function HeroSection() {
+function formatDossierDate(iso?: string | null): string {
+  if (!iso) return "১৮.০২.২০২৬ · ১০:৪২";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "১৮.০২.২০২৬ · ১০:৪২";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return toBnDigits(`${day}.${month}.${year} · ${hours}:${minutes}`);
+}
+
+interface HeroSectionProps {
+  latestReport?: PublicReport | null;
+  reports?: PublicReport[];
+}
+
+export default function HeroSection({ latestReport, reports = [] }: HeroSectionProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [activeRecordId, setActiveRecordId] = useState<string | null>("SG-2026-0042");
+  const [activeRecordId, setActiveRecordId] = useState<string | null>(
+    latestReport?.slug || latestReport?.id || (reports.length > 0 ? (reports[0].slug || reports[0].id) : null)
+  );
   const [evidenceFocus, setEvidenceFocus] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoKey, setInfoKey] = useState<string | number | null>(null);
   const [exhibitData, setExhibitData] = useState<ExhibitData | null>(null);
+
+  const isLive = Boolean(latestReport);
+  const reportSlug = latestReport?.slug || latestReport?.id || "";
+  const displayId = latestReport ? formatCaseId(latestReport.publicId) : "SG-2026-0001";
+  const rawDigits = latestReport ? String(latestReport.publicId || "").replace(/\D/g, "") : "001";
+  const displayShortId = latestReport ? toBnDigits((rawDigits || "১").padStart(4, "0")) : "০০০১";
+  const folderId = latestReport ? (rawDigits ? toBnDigits(rawDigits.padStart(3, "0")) : "001") : "001";
+  const displayTitle = latestReport?.title || latestReport?.summary || "নাগরিক সেবা ও জবাবদিহিতা";
+
+  const instName = latestReport?.institution?.nameBn || "পৌরসভা / স্থানীয় প্রশাসন";
+  const areaLabel = latestReport?.location?.area ? areaName(latestReport.location.area) : "শিবচর, মাদারীপুর";
+  const metaText = `${instName} · ${areaLabel}`;
+
+  const displayDate = formatDossierDate(latestReport?.publishedAt || latestReport?.updatedAt);
+
+  const verificationStamp = latestReport
+    ? (latestReport.verificationLevel === "unverified" ? "RECORDED" : "VERIFIED")
+    : "VERIFIED";
+
+  const verificationSubtext = latestReport
+    ? (latestReport.verificationLevel === "unverified"
+        ? "PENDING / UNDER REVIEW"
+        : "CITIZEN RECORD / VERIFIED")
+    : "CITIZEN RECORD / VERIFIED";
+
+  const evidenceCount = latestReport?.evidence?.length || 0;
+  const file1 = latestReport?.evidence?.[0]?.title || (isLive ? (evidenceCount > 0 ? "সংযুক্তি_০১" : "নাগরিক_অভিযোগ.pdf") : "নাগরিক_অভিযোগ.pdf");
+  const file2 = latestReport?.evidence?.[1]?.title || (isLive ? (evidenceCount > 1 ? "সংযুক্তি_০২" : undefined) : undefined);
 
   const handleOpenInfo = (key: string | number) => {
     setExhibitData(null);
@@ -128,7 +179,7 @@ export default function HeroSection() {
               </span>
               <span className="flex items-center gap-[0.65em] font-sans text-[1.22em] tracking-[0.02em]">
                 <i className="inline-block w-[0.45em] h-[0.45em] rounded-full bg-primary" aria-hidden="true"></i>
-                নমুনা নথি
+                {isLive ? "সর্বশেষ প্রকাশিত নথি" : "নমুনা নথি"}
               </span>
             </div>
             <div className="board-watermark" lang="en" aria-hidden="true">
@@ -163,81 +214,150 @@ export default function HeroSection() {
               aria-hidden="true"
             ></span>
             <div className="folder-backing" aria-hidden="true">
-              <span className="folder-tab mono">PUBLIC RECORD / 042</span>
+              <span className="folder-tab mono">PUBLIC RECORD / {folderId}</span>
             </div>
 
             <div className="report-wrap">
-              <button
-                className="report-sheet"
-                type="button"
-                data-record="SG-2026-0042"
-                onClick={() => handleOpenRecord("SG-2026-0042")}
-                aria-label="নমুনা রিপোর্ট ০০৪২ দেখুন: সেবা পেতে অতিরিক্ত অর্থ দাবি"
-              >
-                <span className="paper-clip" aria-hidden="true"></span>
-                <span className="record-header">
-                  <span className="record-brand" lang="en">
-                    shighush<b className="text-primary font-bold">.</b>
+              {isLive ? (
+                <Link
+                  className="report-sheet"
+                  href={`/reports/${reportSlug}`}
+                  data-record={displayId}
+                  aria-label={`নাগরিক নথি ${displayId} দেখুন: ${displayTitle}`}
+                >
+                  <span className="paper-clip" aria-hidden="true"></span>
+                  <span className="record-header">
+                    <span className="record-brand" lang="en">
+                      shighush<b className="text-primary font-bold">.</b>
+                    </span>
+                    <span className="record-header-code font-mono" lang="en">
+                      CITIZEN RECORD
+                      <br />
+                      {displayId}
+                    </span>
                   </span>
-                  <span className="record-header-code mono" lang="en">
-                    CITIZEN RECORD
-                    <br />
-                    SG-2026-0042
-                  </span>
-                </span>
-                <span className="record-kicker">
-                  <svg className="icon" aria-hidden="true">
-                    <use href="#i-file" />
-                  </svg>
-                  একটি রিপোর্ট / ০০৪২
-                </span>
-                <span className="record-title">
-                  সেবা পেতে
-                  <br />
-                  অতিরিক্ত অর্থ দাবি
-                </span>
-                <span className="record-meta">
-                  ভূমি সেবা · শিবচর, মাদারীপুর
-                </span>
-                <span className="redacted-copy" aria-hidden="true">
-                  <span className="redacted-label">
-                    ঘটনার বিবরণ / সংবেদনশীল তথ্য গোপন
-                  </span>
-                  <span className="redacted-line">
-                    <i className="redact" style={{ width: "37%" }}></i>
-                    <i className="redact soft" style={{ width: "44%" }}></i>
-                  </span>
-                  <span className="redacted-line">
-                    <i className="redact soft" style={{ width: "21%" }}></i>
-                    <i className="redact" style={{ width: "56%" }}></i>
-                  </span>
-                  <span className="redacted-line">
-                    <i className="redact" style={{ width: "48%" }}></i>
-                    <i className="redact medium" style={{ width: "17%" }}></i>
-                  </span>
-                  <span className="redacted-line">
-                    <i className="redact medium" style={{ width: "29%" }}></i>
-                    <i className="redact soft" style={{ width: "53%" }}></i>
-                  </span>
-                </span>
-                <span className="verified-stamp" aria-hidden="true">
-                  <strong className="block font-manrope text-[1.37em] font-extrabold tracking-[0.09em]" lang="en">
-                    VERIFIED
-                  </strong>
-                  <small className="mono block mt-[0.4em] text-foreground text-[0.4em] tracking-[0.18em] text-center" lang="en">
-                    SAMPLE / EVIDENCE REVIEWED
-                  </small>
-                </span>
-                <span className="record-bottom">
-                  <span className="flex items-center gap-[0.5em]">
+                  <span className="record-kicker">
                     <svg className="icon" aria-hidden="true">
-                      <use href="#i-lock" />
+                      <use href="#i-file" />
                     </svg>
-                    পরিচয় গোপন
+                    একটি রিপোর্ট / {displayShortId}
                   </span>
-                  <span className="mono flex items-center gap-[0.5em]">১৮.০২.২০২৬ · ১০:৪২</span>
-                </span>
-              </button>
+                  <span className="record-title line-clamp-2">
+                    {displayTitle}
+                  </span>
+                  <span className="record-meta truncate block">
+                    {metaText}
+                  </span>
+                  <span className="redacted-copy" aria-hidden="true">
+                    <span className="redacted-label">
+                      ঘটনার বিবরণ / সংবেদনশীল তথ্য গোপন
+                    </span>
+                    <span className="redacted-line">
+                      <i className="redact" style={{ width: "37%" }}></i>
+                      <i className="redact soft" style={{ width: "44%" }}></i>
+                    </span>
+                    <span className="redacted-line">
+                      <i className="redact soft" style={{ width: "21%" }}></i>
+                      <i className="redact" style={{ width: "56%" }}></i>
+                    </span>
+                    <span className="redacted-line">
+                      <i className="redact" style={{ width: "48%" }}></i>
+                      <i className="redact medium" style={{ width: "17%" }}></i>
+                    </span>
+                    <span className="redacted-line">
+                      <i className="redact medium" style={{ width: "29%" }}></i>
+                      <i className="redact soft" style={{ width: "53%" }}></i>
+                    </span>
+                  </span>
+                  <span className="verified-stamp" aria-hidden="true">
+                    <strong className="block font-manrope text-[1.37em] font-extrabold tracking-[0.09em]" lang="en">
+                      {verificationStamp}
+                    </strong>
+                    <small className="mono block mt-[0.4em] text-foreground text-[0.4em] tracking-[0.18em] text-center" lang="en">
+                      {verificationSubtext}
+                    </small>
+                  </span>
+                  <span className="record-bottom">
+                    <span className="flex items-center gap-[0.5em]">
+                      <svg className="icon" aria-hidden="true">
+                        <use href="#i-lock" />
+                      </svg>
+                      পরিচয় গোপন
+                    </span>
+                    <span className="mono flex items-center gap-[0.5em]">{displayDate}</span>
+                  </span>
+                </Link>
+              ) : (
+                <button
+                  className="report-sheet"
+                  type="button"
+                  data-record={displayId}
+                  onClick={() => (activeRecordId ? handleOpenRecord(activeRecordId) : setSearchOpen(true))}
+                  aria-label={`রিপোর্ট ${displayShortId} দেখুন: ${displayTitle}`}
+                >
+                  <span className="paper-clip" aria-hidden="true"></span>
+                  <span className="record-header">
+                    <span className="record-brand" lang="en">
+                      shighush<b className="text-primary font-bold">.</b>
+                    </span>
+                    <span className="record-header-code mono" lang="en">
+                      CITIZEN RECORD
+                      <br />
+                      {displayId}
+                    </span>
+                  </span>
+                  <span className="record-kicker">
+                    <svg className="icon" aria-hidden="true">
+                      <use href="#i-file" />
+                    </svg>
+                    একটি রিপোর্ট / {displayShortId}
+                  </span>
+                  <span className="record-title">
+                    {displayTitle}
+                  </span>
+                  <span className="record-meta">
+                    {metaText}
+                  </span>
+                  <span className="redacted-copy" aria-hidden="true">
+                    <span className="redacted-label">
+                      ঘটনার বিবরণ / সংবেদনশীল তথ্য গোপন
+                    </span>
+                    <span className="redacted-line">
+                      <i className="redact" style={{ width: "37%" }}></i>
+                      <i className="redact soft" style={{ width: "44%" }}></i>
+                    </span>
+                    <span className="redacted-line">
+                      <i className="redact soft" style={{ width: "21%" }}></i>
+                      <i className="redact" style={{ width: "56%" }}></i>
+                    </span>
+                    <span className="redacted-line">
+                      <i className="redact" style={{ width: "48%" }}></i>
+                      <i className="redact medium" style={{ width: "17%" }}></i>
+                    </span>
+                    <span className="redacted-line">
+                      <i className="redact medium" style={{ width: "29%" }}></i>
+                      <i className="redact soft" style={{ width: "53%" }}></i>
+                    </span>
+                  </span>
+                  <span className="verified-stamp" aria-hidden="true">
+                    <strong className="block font-manrope text-[1.37em] font-extrabold tracking-[0.09em]" lang="en">
+                      {verificationStamp}
+                    </strong>
+                    <small className="mono block mt-[0.4em] text-foreground text-[0.4em] tracking-[0.18em] text-center" lang="en">
+                      {verificationSubtext}
+                    </small>
+                  </span>
+                  <span className="record-bottom">
+                    <span className="flex items-center gap-[0.5em]">
+                      <svg className="icon" aria-hidden="true">
+                        <use href="#i-lock" />
+                      </svg>
+                      পরিচয় গোপন
+                    </span>
+                    <span className="mono flex items-center gap-[0.5em]">{displayDate}</span>
+                  </span>
+                </button>
+              )}
             </div>
 
             <button
@@ -259,42 +379,84 @@ export default function HeroSection() {
             </button>
 
             <div className="attachment-wrap">
-              <button
-                className="attachment-slip"
-                type="button"
-                data-evidence="SG-2026-0042"
-                onClick={() => handleOpenRecord("SG-2026-0042", true)}
-                aria-label="নমুনা রিপোর্টের দুটি সংযুক্ত প্রমাণ দেখুন"
-              >
-                <span className="attachment-top">
-                  <span>প্রমাণ সংযুক্ত</span>
-                  <svg className="icon" aria-hidden="true">
-                    <use href="#i-clip" />
-                  </svg>
-                </span>
-                <span className="attachment-content">
-                  <span className="mini-documents" aria-hidden="true">
-                    <span className="mini-document">
-                      <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
-                      <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
-                      <i className="block h-px bg-foreground mb-[0.3em] opacity-55 w-[65%]"></i>
+              {isLive ? (
+                <Link
+                  className="attachment-slip"
+                  href={`/reports/${reportSlug}`}
+                  data-evidence={displayId}
+                  aria-label="রিপোর্টের সংযুক্ত প্রমাণ দেখুন"
+                >
+                  <span className="attachment-top">
+                    <span>{evidenceCount > 0 ? "প্রমাণ সংযুক্ত" : "নাগরিক নথি"}</span>
+                    <svg className="icon" aria-hidden="true">
+                      <use href="#i-clip" />
+                    </svg>
+                  </span>
+                  <span className="attachment-content">
+                    <span className="mini-documents" aria-hidden="true">
+                      <span className="mini-document">
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55 w-[65%]"></i>
+                      </span>
+                      <span className="mini-document">
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55 w-[65%]"></i>
+                      </span>
                     </span>
-                    <span className="mini-document">
-                      <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
-                      <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
-                      <i className="block h-px bg-foreground mb-[0.3em] opacity-55 w-[65%]"></i>
+                    <span className="attachment-file-label">
+                      {file1}
+                      {file2 && <small className="block text-[0.85em] text-muted-foreground">{file2}</small>}
+                      <small className="block text-[0.85em] text-muted-foreground">
+                        {evidenceCount > 0 ? `${toBnDigits(evidenceCount)}টি ফাইল সংযুক্ত` : "সংরক্ষিত নাগরিক নথি"}
+                      </small>
                     </span>
                   </span>
-                  <span className="attachment-file-label">
-                    নথি_০১.pdf
-                    <small className="block text-[0.85em] text-muted-foreground">রসিদ_০২.jpg</small>
-                    <small className="block text-[0.85em] text-muted-foreground">২টি ফাইল সংযুক্ত</small>
+                  <span className="attachment-footer mono" lang="en">
+                    {evidenceCount > 0 ? "EXHIBIT / VERIFIED ATTACHMENT" : "PUBLIC RECORD / DOCUMENTED"}
                   </span>
-                </span>
-                <span className="attachment-footer mono" lang="en">
-                  EXHIBIT A + B / DOCUMENTED
-                </span>
-              </button>
+                </Link>
+              ) : (
+                <button
+                  className="attachment-slip"
+                  type="button"
+                  data-evidence={displayId}
+                  onClick={() => (activeRecordId ? handleOpenRecord(activeRecordId, true) : setSearchOpen(true))}
+                  aria-label="রিপোর্টের সংযুক্ত প্রমাণ ও তথ্য নথি দেখুন"
+                >
+                  <span className="attachment-top">
+                    <span>প্রমাণ সংযুক্ত</span>
+                    <svg className="icon" aria-hidden="true">
+                      <use href="#i-clip" />
+                    </svg>
+                  </span>
+                  <span className="attachment-content">
+                    <span className="mini-documents" aria-hidden="true">
+                      <span className="mini-document">
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55 w-[65%]"></i>
+                      </span>
+                      <span className="mini-document">
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55"></i>
+                        <i className="block h-px bg-foreground mb-[0.3em] opacity-55 w-[65%]"></i>
+                      </span>
+                    </span>
+                    <span className="attachment-file-label">
+                      {file1}
+                      {file2 ? <small className="block text-[0.85em] text-muted-foreground">{file2}</small> : null}
+                      <small className="block text-[0.85em] text-muted-foreground">
+                        {evidenceCount > 0 ? `${toBnDigits(evidenceCount)}টি ফাইল সংযুক্ত` : "সংযুক্তি পর্যালোচনা"}
+                      </small>
+                    </span>
+                  </span>
+                  <span className="attachment-footer mono" lang="en">
+                    {evidenceCount > 0 ? "EXHIBIT / VERIFIED ATTACHMENT" : "PUBLIC RECORD / DOCUMENTED"}
+                  </span>
+                </button>
+              )}
             </div>
 
             <button
@@ -429,6 +591,7 @@ export default function HeroSection() {
       <SearchDialog
         open={searchOpen}
         onOpenChange={setSearchOpen}
+        reports={reports}
         onRecordClick={(recordId) => {
           setActiveRecordId(recordId);
           setEvidenceFocus(false);
@@ -442,6 +605,7 @@ export default function HeroSection() {
         onOpenChange={setDetailOpen}
         recordId={activeRecordId}
         evidenceFocus={evidenceFocus}
+        reports={reports}
         onBackToSearch={() => {
           setDetailOpen(false);
           setSearchOpen(true);

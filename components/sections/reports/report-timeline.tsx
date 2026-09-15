@@ -32,7 +32,7 @@ export function ReportTimeline({ report }: { report: PublicReport }) {
 
   return (
     <section className="border-t-2 border-foreground pt-7">
-      <p className="mono text-[11px] font-bold tracking-[.15em] text-primary">
+      <p className=" text-[11px] font-bold tracking-[.15em] text-primary">
         নথির সময়রেখা
       </p>
 
@@ -75,7 +75,7 @@ export function ReportTimeline({ report }: { report: PublicReport }) {
       {/* §16.7 — an institution's reply is appended, never merged into the report body. */}
       {report.responses && report.responses.length > 0 && (
         <div className="mt-8 grid gap-4">
-          <p className="mono text-[11px] font-bold tracking-[.15em] text-primary">
+          <p className=" text-[11px] font-bold tracking-[.15em] text-primary">
             প্রতিষ্ঠানের জবাব
           </p>
           {report.responses.map((response) => (

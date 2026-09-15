@@ -31,7 +31,7 @@ export function CategoriesTab({ categories }: CategoriesTabProps) {
             </span>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="font-mono text-3xl font-black">
+            <span className=" text-3xl font-black">
               {String(cat.count).padStart(2, "০")}
             </span>
             <span className="text-[10px] font-bold text-muted-foreground">

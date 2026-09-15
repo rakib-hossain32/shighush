@@ -39,7 +39,7 @@ export default function AdminError({
         </p>
 
         {error.digest && (
-          <p className="mono mt-4 border border-border bg-muted p-3 text-xs">
+          <p className=" mt-4 border border-border bg-muted p-3 text-xs">
             ত্রুটি কোড: {error.digest}
           </p>
         )}

@@ -30,7 +30,7 @@ export function InstitutionReportList({ reports }: { reports: PublicReport[] }) 
                 <StatusBadge tone="neutral">
                   {REPORT_CATEGORY_META[report.category].label}
                 </StatusBadge>
-                <span className="mono text-[11px] font-bold text-muted-foreground">
+                <span className=" text-[11px] font-bold text-muted-foreground">
                   {formatCaseId(report.publicId)}
                 </span>
               </div>

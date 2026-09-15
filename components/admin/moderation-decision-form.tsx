@@ -228,7 +228,7 @@ export function ModerationDecisionForm({
                 className="grid gap-3 border-2 border-foreground bg-background p-5 shadow-[3px_3px_0_var(--foreground)]"
                 id="publication-preview"
               >
-                <p className="font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <p className=" text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   পাবলিক লেখার প্রিভিউ
                 </p>
                 <h3 className="text-xl font-bold">{title}</h3>

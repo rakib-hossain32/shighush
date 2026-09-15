@@ -121,13 +121,19 @@ export function adaptInstitution(apiInstitution: any): Institution {
 export function adaptAppeal(apiAppeal: any): Appeal {
   return {
     id: apiAppeal._id || apiAppeal.id || '',
+    reportId: typeof apiAppeal.reportId === 'string' ? apiAppeal.reportId : apiAppeal.reportId?._id,
     caseId: apiAppeal.caseId || '',
     reportSlug: apiAppeal.reportSlug,
+    reportTitle: apiAppeal.reportTitle,
+    reportCategory: apiAppeal.reportCategory,
+    institutionName: apiAppeal.institutionName,
     reason: (apiAppeal.reason as AppealReason) || 'other',
     detail: apiAppeal.description || apiAppeal.detail || '',
-    status: (apiAppeal.status as AppealStatus) || 'received',
+    status: (apiAppeal.status === 'resolved' ? 'upheld' : apiAppeal.status as AppealStatus) || 'received',
     receivedAt: toIsoString(apiAppeal.createdAt || apiAppeal.receivedAt),
     resolvedAt: apiAppeal.resolvedAt ? toIsoString(apiAppeal.resolvedAt) : undefined,
+    contactEmail: apiAppeal.contactEmail,
+    resolution: apiAppeal.resolution,
   };
 }
 

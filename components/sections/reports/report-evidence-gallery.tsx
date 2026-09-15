@@ -20,7 +20,7 @@ export function ReportEvidenceGallery({ report }: { report: PublicReport }) {
     <section className="border-t-2 border-foreground pt-7">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <p className="mono text-[11px] font-bold tracking-[.15em] text-primary">
+          <p className=" text-[11px] font-bold tracking-[.15em] text-primary">
             সংযুক্ত প্রমাণ
           </p>
           <h2 className="display mt-2 text-3xl font-bold">যাচাইযোগ্য সংযুক্তি</h2>

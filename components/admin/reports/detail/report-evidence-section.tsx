@@ -97,7 +97,7 @@ function EvidenceCard({ item }: { item: EvidenceSummary }) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <EvidenceTypeIcon type={item.type} />
-            <span className="font-mono text-[11px] font-bold text-muted-foreground uppercase">
+            <span className=" text-[11px] font-bold text-muted-foreground uppercase">
               {typeMeta?.label || item.type}
             </span>
           </div>

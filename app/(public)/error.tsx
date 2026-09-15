@@ -40,7 +40,7 @@ export default function PublicError({
             </p>
 
             {error.digest && (
-              <p className="mono mt-4 rounded border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+              <p className=" mt-4 rounded border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
                 ত্রুটি কোড: {error.digest}
               </p>
             )}

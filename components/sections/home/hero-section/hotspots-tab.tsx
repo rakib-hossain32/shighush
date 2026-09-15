@@ -15,7 +15,7 @@ export function HotspotsTab({ hotspots }: HotspotsTabProps) {
             এলাকাভিত্তিক রিপোর্টের ঘনত্ব
           </h4>
         </div>
-        <span className="rounded bg-card px-2 py-0.5 font-mono text-[10px] font-bold text-foreground">
+        <span className="rounded bg-card px-2 py-0.5  text-[10px] font-bold text-foreground">
           গত ৩০ দিনের চিত্র
         </span>
       </div>
@@ -29,7 +29,7 @@ export function HotspotsTab({ hotspots }: HotspotsTabProps) {
             >
               <div className="flex justify-between text-xs font-bold">
                 <span>{hotspot.area}</span>
-                <span className="font-mono text-secondary">
+                <span className=" text-secondary">
                   {hotspot.count} টি নথি
                 </span>
               </div>

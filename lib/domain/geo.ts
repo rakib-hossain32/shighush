@@ -47,13 +47,17 @@ export const AREAS = [MUNICIPALITY, ...UNIONS] as const;
 
 export type AreaSlug = (typeof AREAS)[number]["slug"];
 
-const AREA_BY_SLUG = new Map<string, string>(
-  AREAS.map((a) => [a.slug, a.nameBn]),
-);
+const AREA_BY_SLUG = new Map<string, string>([
+  ...AREAS.map((a) => [a.slug, a.nameBn] as [string, string]),
+  ["shibchar-sadar", "শিবচর সদর"],
+  ["shibchar-upazila", "শিবচর উপজেলা সদর"],
+  ["shibchar", "শিবচর"],
+  ["unknown", "এলাকা উল্লেখ নেই"],
+]);
 
 /** Bengali name for an area slug. Falls back to the slug so unknown data stays visible. */
 export function areaName(slug: string | undefined | null): string {
-  if (!slug) return "এলাকা উল্লেখ নেই";
+  if (!slug || slug === "unknown") return "এলাকা উল্লেখ নেই";
   return AREA_BY_SLUG.get(slug) ?? slug;
 }
 

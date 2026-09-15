@@ -1,6 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
+import Link from "next/link";
+import {
+  ArrowUpRight,
+  Shield,
+  FileText,
+  Copy,
+  Check,
+  ArrowLeft,
+  Calendar,
+  Building2,
+  MapPin,
+  Tag,
+  Paperclip,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,27 +23,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { SAMPLE_RECORDS, type SampleRecord } from "./search-dialog";
+
+import { type DisplayRecord, toDisplayRecord, CATEGORY_LABELS } from "./search-dialog";
 import { cn } from "@/lib/utils";
+import type { PublicReport } from "@/services/_shared/types";
+import { formatCaseId, toBnDigits } from "@/lib/format";
 
 /* ------------------------------------------------------------------ */
-/*  Bangla digit converter helper                                     */
+/*  Workflow Steps metadata                                            */
 /* ------------------------------------------------------------------ */
-function toBn(num: number | string): string {
-  const bnDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-  return String(num).replace(/[0-9]/g, (d) => bnDigits[Number(d)]);
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  bribery: "ঘুষ / অর্থ দাবি",
-  harassment: "হয়রানি",
-  service: "সেবা বঞ্চনা",
-  abuse: "ক্ষমতার অপব্যবহার",
-  other: "অন্যান্য",
-};
-
 const WORKFLOW_STEPS = [
   { title: "অভিযোগ" },
   { title: "মডারেশন" },
@@ -38,16 +40,222 @@ const WORKFLOW_STEPS = [
   { title: "প্রকাশ" },
 ];
 
-function SpriteIcon({ name, className = "" }: { name: string; className?: string }) {
+/* ------------------------------------------------------------------ */
+/*  Subcomponent: Notice Banner (Strictly rounded-none)                */
+/* ------------------------------------------------------------------ */
+function DetailNoticeCard() {
   return (
-    <svg className={`icon ${className}`.trim()} aria-hidden="true">
-      <use href={`#i-${name}`} />
-    </svg>
+    <div className="flex items-start gap-3 rounded-none border-2 border-foreground bg-muted/40 p-3.5 text-xs font-medium leading-relaxed text-foreground shadow-[2px_2px_0_var(--foreground)]">
+      <Shield className="size-4 text-primary shrink-0 mt-0.5" />
+      <p>
+        নাগরিক তথ্যের সুরক্ষা বজায় রেখে এই প্রতিবেদনটি দায়িত্বশীলতার সাথে পর্যালোচনা ও পরিমার্জন করে নথিবদ্ধ করা হয়েছে।
+      </p>
+    </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Props & Component                                                  */
+/*  Subcomponent: Metadata Grid (Strictly rounded-none)                */
+/* ------------------------------------------------------------------ */
+function DetailMetadataGrid({ record }: { record: DisplayRecord }) {
+  const items = [
+    {
+      icon: MapPin,
+      label: "এলাকা",
+      value: record.area,
+    },
+    {
+      icon: Building2,
+      label: "প্রতিষ্ঠান / বিভাগ",
+      value: record.institution,
+    },
+    {
+      icon: Tag,
+      label: "অভিযোগের ধরন",
+      value: CATEGORY_LABELS[record.category] || record.category,
+    },
+    {
+      icon: Calendar,
+      label: "নথির তারিখ",
+      value: record.date,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      {items.map((item, idx) => {
+        const Icon = item.icon;
+        return (
+          <div
+            key={idx}
+            className="flex items-center gap-3 rounded-none border-2 border-foreground bg-card p-3 shadow-[2px_2px_0_var(--foreground)]"
+          >
+            <div className="size-8 rounded-none border border-foreground bg-muted/60 grid place-items-center shrink-0">
+              <Icon className="size-4 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block text-[11px] font-black uppercase tracking-wider text-muted-foreground ">
+                {item.label}
+              </span>
+              <span className="block text-xs font-black text-foreground truncate">
+                {item.value}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Subcomponent: Workflow Progress Tracker (Strictly rounded-none)    */
+/* ------------------------------------------------------------------ */
+function DetailWorkflowProgress({ record }: { record: DisplayRecord }) {
+  return (
+    <div className="rounded-none border-2 border-foreground bg-card p-4 space-y-3 shadow-[2px_2px_0_var(--foreground)]">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-black uppercase tracking-wider text-foreground ">
+          নথির অগ্রগতি ও যাচাইকরণ
+        </span>
+        <span className="rounded-none border border-foreground bg-background px-2 py-0.5 text-[10px] font-black shadow-[1px_1px_0_var(--foreground)]">
+          যাচাই স্তর: {toBnDigits(record.verification)}/৩
+        </span>
+      </div>
+
+      <div className="grid grid-cols-5 gap-1 pt-2 relative">
+        {WORKFLOW_STEPS.map((step, idx) => {
+          const complete = idx <= record.stage;
+          return (
+            <div key={idx} className="relative text-center">
+              {/* Connector line */}
+              <div
+                className={cn(
+                  "absolute top-3.5 h-0.5 bg-border z-0",
+                  idx === 0
+                    ? "left-1/2 w-1/2"
+                    : idx === WORKFLOW_STEPS.length - 1
+                    ? "left-0 w-1/2"
+                    : "left-0 w-full",
+                  complete && "bg-primary"
+                )}
+              />
+
+              <div
+                className={cn(
+                  "relative z-10 mx-auto mb-1.5 grid size-7 place-items-center rounded-none border-2 text-[11px] font-black transition-colors",
+                  complete
+                    ? "bg-primary text-primary-foreground border-foreground shadow-[1px_1px_0_var(--foreground)]"
+                    : "bg-background text-muted-foreground border-border"
+                )}
+              >
+                {complete ? (
+                  <Check className="size-3.5 stroke-[3]" />
+                ) : (
+                  toBnDigits(idx + 1)
+                )}
+              </div>
+
+              <span
+                className={cn(
+                  "block text-[11px] leading-tight",
+                  complete ? "text-foreground font-black" : "text-muted-foreground font-semibold"
+                )}
+              >
+                {step.title}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground pt-1 border-t border-border font-medium">
+        {record.verification
+          ? `যাচাই স্তর ${toBnDigits(record.verification)}/৩ অর্জিত। সংবেদনশীল তথ্য ও ব্যক্তিগত পরিচয় গোপন রেখে নথিবদ্ধ করা হয়েছে।`
+          : "এখনও কোনো আনুষ্ঠানিক প্রমাণ যাচাই সম্পন্ন হয়নি।"}
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Subcomponent: Attached Evidence List (Strictly rounded-none)       */
+/* ------------------------------------------------------------------ */
+function DetailEvidenceList({
+  record,
+  evidenceFocus,
+  onOpenExhibit,
+}: {
+  record: DisplayRecord;
+  evidenceFocus: boolean;
+  onOpenExhibit?: (record: DisplayRecord, fileName: string, kind: string) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-none border-2 border-foreground bg-card p-4 space-y-3 shadow-[2px_2px_0_var(--foreground)]",
+        evidenceFocus && "ring-2 ring-primary"
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Paperclip className="size-3.5 text-primary" />
+          <span className="text-xs font-black uppercase tracking-wider text-foreground ">
+            সংযুক্ত প্রমাণপত্র
+          </span>
+        </div>
+        <span className="rounded-none border border-foreground bg-background px-2 py-0.5 text-[10px] font-black shadow-[1px_1px_0_var(--foreground)]">
+          {toBnDigits(record.files.length)}টি ফাইল
+        </span>
+      </div>
+
+      {record.files.length === 0 ? (
+        <p className="py-2 text-xs text-muted-foreground font-medium">
+          এই নথির সাথে কোনো ডিজিটাল ফাইল সরাসরি সংযুক্ত করা হয়নি।
+        </p>
+      ) : (
+        <div className="divide-y divide-border">
+          {record.files.map((file, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between py-2.5 px-1 hover:bg-muted/40 transition-colors"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-7 rounded-none bg-muted grid place-items-center shrink-0 border border-foreground">
+                  <FileText className="size-3.5 text-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-xs font-black text-foreground truncate">
+                    {file.name}
+                  </span>
+                  <span className="block text-[10px] text-muted-foreground ">
+                    সংযুক্ত প্রমাণ কপি · {file.kind}
+                  </span>
+                </div>
+              </div>
+
+              {onOpenExhibit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  className="cursor-pointer rounded-none gap-1 text-xs border-2 border-foreground font-black shadow-[1px_1px_0_var(--foreground)] hover:bg-muted shrink-0"
+                  onClick={() => onOpenExhibit(record, file.name, file.kind)}
+                >
+                  <span>প্রদর্শন</span>
+                  <ArrowUpRight className="size-3" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Props & Main Component                                             */
 /* ------------------------------------------------------------------ */
 interface DetailDialogProps {
   open: boolean;
@@ -55,7 +263,8 @@ interface DetailDialogProps {
   recordId: string | null;
   evidenceFocus?: boolean;
   onBackToSearch?: () => void;
-  onOpenExhibit?: (record: SampleRecord, fileName: string, kind: string) => void;
+  onOpenExhibit?: (record: DisplayRecord, fileName: string, kind: string) => void;
+  reports?: PublicReport[];
 }
 
 export function DetailDialog({
@@ -65,192 +274,143 @@ export function DetailDialog({
   evidenceFocus = false,
   onBackToSearch,
   onOpenExhibit,
+  reports = [],
 }: DetailDialogProps) {
   const [copied, setCopied] = useState(false);
 
-  // Find record from sample records
-  const record =
-    SAMPLE_RECORDS.find((r) => r.id === recordId) || SAMPLE_RECORDS[0];
+  // Find matching report
+  const matchingReport = reports.find(
+    (r) =>
+      r.id === recordId ||
+      r.slug === recordId ||
+      String(r.publicId) === recordId ||
+      formatCaseId(r.publicId) === recordId
+  );
+
+  // If no matching report, render empty state cleanly
+  if (!matchingReport) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[88vh] overflow-x-hidden overflow-y-auto rounded-none! border-2 border-foreground bg-card p-0 shadow-[6px_6px_0_var(--foreground)] sm:max-w-md">
+          <DialogHeader className="border-b-2 border-foreground bg-muted/40 px-5 py-4 text-left sm:px-6">
+            <DialogTitle className="font-heading text-lg font-black text-foreground">
+              নথি খুঁজে পাওয়া যায়নি
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-8 px-6 text-center space-y-4">
+            <p className="text-xs text-muted-foreground font-medium">
+              অনুরোধকৃত নথির রেকর্ডটি ডাটাবেজে পাওয়া যায়নি অথবা এটি পর্যালোচনার পর্যায়ে রয়েছে।
+            </p>
+            {onBackToSearch && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onBackToSearch}
+                className="cursor-pointer rounded-none border-2 border-foreground shadow-[2px_2px_0_var(--foreground)] font-black gap-2"
+              >
+                <ArrowLeft className="size-3.5" />
+                <span>সব নথিতে ফিরুন</span>
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const record = toDisplayRecord(matchingReport);
 
   const handleCopyId = () => {
-    if (!record) return;
     navigator.clipboard.writeText(record.id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!record) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-155 max-h-[88vh] overflow-y-auto">
-        <DialogHeader className="space-y-1.5 pb-1">
+      <DialogContent className="max-h-[88vh] overflow-x-hidden overflow-y-auto rounded-none! border-2 border-foreground bg-card p-0 shadow-[6px_6px_0_var(--foreground)] sm:max-w-2xl">
+        {/* Modal Header */}
+        <DialogHeader className="border-b-2 border-foreground bg-muted/40 px-5 py-4 text-left sm:px-6">
           <div className="flex items-center gap-2">
-            <span
-              className="mono text-xs tracking-widest text-muted-foreground"
-              lang="en"
-            >
-              {record.id}
+            <span className="inline-flex items-center gap-1 rounded-none border-2 border-foreground bg-background px-2 py-0.5 text-xs font-black  tracking-wider text-foreground shadow-[1px_1px_0_var(--foreground)]" lang="en">
+              <FileText className="size-3 text-primary" />
+              <span>{record.id}</span>
             </span>
-            <Badge
-              variant="outline"
-              className="h-4 px-1.5 py-0 text-[10px] font-mono tracking-wider text-muted-foreground uppercase"
-            >
-              SAMPLE RECORD
-            </Badge>
+            <span className="rounded-none border border-foreground bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-foreground">
+              নাগরিক নথি
+            </span>
           </div>
-          <DialogTitle className="text-xl font-semibold leading-tight">
+          <DialogTitle className="font-heading text-lg sm:text-xl font-black text-foreground leading-snug mt-1.5">
             {record.title}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 text-sm">
-          {/* Demo Notice */}
-          <div className="flex gap-2.5 p-3.5 bg-muted border-l-2 border-primary text-xs leading-relaxed rounded-r-md">
-            <SpriteIcon name="shield" className="size-4 mt-0.5 shrink-0 text-foreground" />
-            <p>
-              এটি একটি কাল্পনিক নমুনা নথি। এখানে দেখানো প্রকাশ ও যাচাই বাস্তব ঘটনা
-              নির্দেশ করে না।
+        {/* Modal Content Body */}
+        <div className="space-y-4 px-5 py-5 sm:px-6">
+          {/* Information Notice */}
+          <DetailNoticeCard />
+
+          {/* Metadata Grid */}
+          <DetailMetadataGrid record={record} />
+
+          {/* Description Section */}
+          <div className="rounded-none border-2 border-foreground bg-card p-4 space-y-2 shadow-[2px_2px_0_var(--foreground)]">
+            <span className="text-xs font-black uppercase tracking-wider text-foreground  block">
+              ঘটনার বিবরণ
+            </span>
+            <p className="text-xs leading-relaxed text-foreground bg-muted/40 p-3 rounded-none border border-foreground/40 whitespace-pre-wrap break-words font-medium">
+              {record.description || "ঘটনার সুনির্দিষ্ট বিবরণ পর্যালোচিত অবস্থায় সংরক্ষিত রয়েছে।"}
             </p>
           </div>
 
-          {/* Metadata Grid */}
-          <dl className="grid grid-cols-2 gap-4 py-4 border-y border-border">
-            <div>
-              <dt className="text-[11px] text-muted-foreground mb-1">এলাকা</dt>
-              <dd className="text-sm font-medium text-foreground break-words">{record.area}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] text-muted-foreground mb-1">প্রতিষ্ঠান</dt>
-              <dd className="text-sm font-medium text-foreground break-words">{record.institution}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] text-muted-foreground mb-1">অভিযোগের ধরন</dt>
-              <dd className="text-sm font-medium text-foreground break-words">{CATEGORY_LABELS[record.category] || record.category}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] text-muted-foreground mb-1">নথির তারিখ</dt>
-              <dd className="text-sm font-medium text-foreground break-words">{record.date}</dd>
-            </div>
-          </dl>
-
-          {/* Description Section */}
-          <section className="mt-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">ঘটনার বিবরণ</h3>
-            <p className="text-[13.5px] leading-relaxed text-foreground bg-muted p-3.5 rounded-lg border border-border whitespace-pre-wrap break-words">{record.description}</p>
-          </section>
-
           {/* Timeline / Progress */}
-          <section className="mt-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">নথির অগ্রগতি (ডেমো)</h3>
-            <ol className="grid grid-cols-5 gap-0 py-3 relative">
-              {WORKFLOW_STEPS.map((step, idx) => {
-                const complete = idx <= record.stage;
-                return (
-                  <li key={idx} className="relative text-[11px] text-center">
-                    {/* Connector line */}
-                    <div
-                      className={cn(
-                        "absolute top-3.5 h-px bg-border z-0",
-                        idx === 0 ? "left-1/2 w-1/2" : idx === WORKFLOW_STEPS.length - 1 ? "left-0 w-1/2" : "left-0 w-full"
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "relative z-10 mx-auto mb-2 grid size-7 place-items-center rounded-full border text-[11px] font-medium transition-colors",
-                        complete
-                          ? "bg-(--lime) text-(--ink) border-(--ink) font-semibold"
-                          : "bg-card text-muted-foreground border-border"
-                      )}
-                    >
-                      {complete ? (
-                        <SpriteIcon name="check" className="size-3.5 stroke-[2.2]" />
-                      ) : (
-                        toBn(idx + 1)
-                      )}
-                    </span>
-                    <span className={cn("block text-[11px]", complete ? "text-foreground font-medium" : "text-muted-foreground")}>
-                      {step.title}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              {record.verification
-                ? `নমুনা যাচাই স্তর: ${toBn(record.verification)}/৩। এটি চূড়ান্ত আইনি সিদ্ধান্ত নয়।`
-                : "এখনো কোনো প্রমাণ যাচাই করা হয়নি।"}
-            </p>
-          </section>
+          <DetailWorkflowProgress record={record} />
 
           {/* Attached Evidence */}
-          <section
-            className={cn("mt-5", evidenceFocus && "rounded-lg p-2 ring-2 ring-primary/40")}
-          >
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-              সংযুক্ত প্রমাণ ({toBn(record.files.length)})
-            </h3>
-            {record.files.length === 0 ? (
-              <p className="py-2 text-xs text-muted-foreground">
-                এই নথিতে কোনো ফাইল যুক্ত করা হয়নি।
-              </p>
-            ) : (
-              <div className="divide-y divide-border">
-                {record.files.map((file, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      if (onOpenExhibit) {
-                        onOpenExhibit(record, file.name, file.kind);
-                      }
-                    }}
-                    className="group flex w-full items-center gap-3 py-3 text-left transition hover:opacity-80 cursor-pointer"
-                  >
-                    <SpriteIcon name="file" className="size-4.5 text-foreground shrink-0" />
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-xs font-medium text-foreground truncate">{file.name}</span>
-                      <small className="block text-[10px] text-muted-foreground">কাল্পনিক প্রমাণের নমুনা দেখুন</small>
-                    </span>
-                    <SpriteIcon
-                      name="arrow-up-right"
-                      className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground shrink-0"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
+          <DetailEvidenceList
+            record={record}
+            evidenceFocus={evidenceFocus}
+            onOpenExhibit={onOpenExhibit}
+          />
         </div>
 
-        {/* Footer Actions with shadcn Button and Separator */}
-        <Separator className="mt-2" />
-        <DialogFooter className="flex items-center justify-between sm:justify-between">
+        {/* Modal Footer (No horizontal overflow) */}
+        <DialogFooter className="flex flex-row items-center justify-between border-t-2 border-foreground bg-muted/40 px-5 py-3.5 sm:px-6 gap-2">
           {onBackToSearch ? (
             <Button
               variant="ghost"
               size="sm"
               onClick={onBackToSearch}
-              className="-ml-2 cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+              className="cursor-pointer rounded-none gap-1 text-xs text-foreground font-bold hover:bg-muted shrink-0"
             >
-              ← সব নথিতে ফিরুন
+              <ArrowLeft className="size-3.5" />
+              <span>নথি তালিকা</span>
             </Button>
           ) : (
             <div />
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCopyId}
-            className="cursor-pointer gap-1.5 text-xs"
-          >
-            <SpriteIcon
-              name={copied ? "check" : "copy"}
-              className="h-3.5 w-3.5"
-            />
-            {copied ? "কপি হয়েছে!" : "আইডি কপি করুন"}
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyId}
+              className="cursor-pointer rounded-none gap-1.5 text-xs font-black border-2 border-foreground bg-background shadow-[2px_2px_0_var(--foreground)] hover:bg-muted"
+            >
+              {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
+              <span>{copied ? "কপি হয়েছে!" : "আইডি কপি"}</span>
+            </Button>
+
+            <Link
+              href={`/reports/${record.slug || record.id}`}
+              onClick={() => onOpenChange(false)}
+              className="inline-flex items-center gap-1.5 rounded-none border-2 border-foreground bg-primary px-3.5 py-1.5 text-xs font-black text-primary-foreground shadow-[2px_2px_0_var(--foreground)] hover:opacity-95 transition-opacity"
+            >
+              <span>সম্পূর্ণ নথি</span>
+              <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

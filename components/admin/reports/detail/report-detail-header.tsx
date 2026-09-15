@@ -55,7 +55,7 @@ export function ReportDetailHeader({ report, isPublished }: ReportDetailHeaderPr
         <div className="flex items-center gap-2">
           {/* Copy Case ID */}
           <Button
-            className="h-8 gap-1.5 rounded-none border-2 border-border bg-background px-2.5 text-xs font-mono font-bold text-foreground hover:border-foreground"
+            className="h-8 gap-1.5 rounded-none border-2 border-border bg-background px-2.5 text-xs font-bold text-foreground hover:border-foreground"
             onClick={handleCopy}
             type="button"
             variant="outline"

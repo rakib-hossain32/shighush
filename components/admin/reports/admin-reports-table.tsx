@@ -62,7 +62,7 @@ export function AdminReportsTable({ reports, hasActiveFilters }: AdminReportsTab
               className="border-2 border-border bg-card p-4 shadow-[2px_2px_0_var(--foreground)] transition-all hover:border-foreground"
             >
               <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
-                <span className="border-2 border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+                <span className="border-2 border-primary/40 bg-primary/10 px-2 py-0.5  text-xs font-bold text-primary">
                   {formatCaseId(report.publicId)}
                 </span>
                 {statusMeta && <MetaBadge meta={statusMeta} short size="sm" />}
@@ -165,7 +165,7 @@ export function AdminReportsTable({ reports, hasActiveFilters }: AdminReportsTab
                   <TableCell className="py-3 pl-4 align-top">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <span className="border border-primary/40 bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-primary">
+                        <span className="border border-primary/40 bg-primary/10 px-1.5 py-0.5  text-[11px] font-bold text-primary">
                           {formatCaseId(report.publicId)}
                         </span>
                         <Link
